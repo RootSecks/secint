@@ -1,0 +1,307 @@
+#!/usr/bin/python
+
+import _mysql
+import sys
+import argparse
+import subprocess
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument('-lS', '--services', help='Display a list of services', action='store_true')
+parser.add_argument('-lSc', '--scans', help='Display all the scans', action='store_true')
+parser.add_argument('-lH', '--hosts', help='Display a list of hosts', action='store_true')
+parser.add_argument('-nT', '--notitle', help='Surpresses column titles to make output suitable for scripts', action='store_true')
+parser.add_argument('-rQ', '--rawquery', help='Run a raw query against the database', action='store_true')
+parser.add_argument('-oT', '--outtable', help='Output as pretty table', action='store_true')
+parser.add_argument('-cV', '--createvector', help='Create a new attack vector record', action='store_true')
+parser.add_argument('-lV', '--listvectors', help='List all vectors', action='store_true')
+parser.add_argument('-sN', '--scannmap', help='Run an nmap scan', action='store_true')
+parser.add_argument('-sS', '--selectscan', help='Return objects from a specific scan')
+parser.add_argument('-d', '--debug', help="Enable debug messages", action="store_true")
+parser.add_argument('filter', type=str, nargs='?', help='Filters returned results based on ip address or service')
+args = parser.parse_args()
+
+
+dbhost = "localhost"
+dbname = ""
+dbuser = ""
+dbpass = ""
+
+f = open('secint.conf', 'r')
+for line in f:
+	line = line.strip('\n')
+	if (args.debug):
+		print line + "\r\n"
+	linearr = line.split('=')
+	if (linearr[0] == "database"):
+		dbname = linearr[1]
+		if (args.debug):
+			print "Database name found, putting: " + linearr[1] + " into dbname variable"	
+	elif (linearr[0] == "user"):
+		dbuser = linearr[1]
+		if (args.debug):	
+			print "Database user found, putting: " + linearr[1] + " into dbuser variable"
+	elif (linearr[0] == "password"):
+		dbpass = linearr[1]
+		if (args.debug):		
+			print "Database pass found, putting: " + linearr[1] + " into dbpass variable"
+	elif (linearr[0] == "host"):
+                dbpass = linearr[1]
+                if (args.debug):
+                        print "Database host found, putting: " + linearr[1] + " into dbhost variable"
+
+
+
+def get_latest_scan_id():
+	con = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+        con.query("SELECT * FROM NmapScans ORDER BY ScanTime DESC LIMIT 1")
+        nmapscans = con.use_result()
+        scanid = nmapscans.fetch_row()[0][0]
+	if ( args.selectscan > 0 ):
+		scanid = args.selectscan
+	return scanid
+	
+
+
+def get_hosts( filter ):
+        scanid = get_latest_scan_id()
+        derp = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+	if (filter):
+		filter = filter.split('=')	
+		filtertext = '&& ' + filter[0] + "=\"" + filter[1] + "\""
+	else:
+		filtertext = ''
+	        
+	derp.query("SELECT * FROM NmapHosts WHERE ParentScan=" + scanid + filtertext)
+	hostrow = derp.use_result()
+	if (args.outtable):
+		template = "{0:15}|{1:10}|{2:25}|{3:10}"	
+	
+	if (not args.notitle):
+		if (args.outtable):
+			print template.format("HostIP", "HostStatus", "HostName", "HostOS")
+		else:
+			print "HostIP\t\t\tHostStatus\t\t\tHostName\t\t\tHostOS"
+	
+	while True:
+		row = hostrow.fetch_row()
+		if not row:
+			break
+		if (args.outtable):
+			print template.format(row[0][1], row[0][3], row[0][4], row[0][5])
+		else:
+			print row[0][1] + "\t\t" + row[0][3] + "\t\t\t" + row[0][4] + "\t\t\t\t\t" + row[0][5]
+
+
+def get_services( filter ):
+	scanid = get_latest_scan_id()
+        derp = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+	template = "{0:15}|{1:25}|{2:8}|{3:8}|{4:8}|{5:15}|{6:45}|{7:35}"
+	if (filter):
+		filter = filter.split('=')	
+		
+		if (filter[0] == 'HostIP'):
+			hostcon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+			hostcon.query("SELECT * FROM NmapHosts WHERE ParentScan=" + scanid + " && HostIP=\"" + filter[1] + "\"")
+			hostquery = hostcon.use_result()
+			hostidrow = hostquery.fetch_row()
+			hostid = hostidrow[0][0]
+			filtertext = 'WHERE ParentHost=' + hostid
+			derp.query("SELECT * FROM NmapServices " + filtertext)
+			servicequery = derp.use_result()
+			
+			if (not args.notitle):
+				if (args.outtable):
+					print template.format("HostIP", "HostName", "SvcID", "SvcProto", "SvcPort", "ServiceName", "ServiceProduct", "ServiceVersion")
+				else:
+					print 'HostIP\t\t\tHostName\tSvcID\tSvcProto\tSvcPort\tServiceName\tServiceProduct\tServiceVersion'
+			
+			while True:
+				servicerow = servicequery.fetch_row()
+				if (not servicerow):
+					break
+				if (args.outtable):
+					print template.format(hostidrow[0][1], hostidrow[0][4], servicerow[0][0], servicerow[0][1], servicerow[0][2], servicerow[0][3], servicerow[0][6], servicerow[0][7])
+				else:
+					print hostidrow[0][1] + '\t\t' + hostidrow[0][4] + '\t\t' + servicerow[0][0] + '\t\t' + servicerow[0][1] + '\t\t' + servicerow[0][2] + '\t\t' + servicerow[0][3] + '\t\t' + servicerow[0][6] + '\t\t' + servicerow[0][7]
+			
+			
+		elif (filter[0] == 'ServicePort'):
+			hostcon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+			hostcon.query("SELECT * FROM NmapHosts WHERE ParentScan=" + scanid)
+			hostquery = hostcon.use_result()
+		
+                        if (not args.notitle):
+                                if (args.outtable):
+                                        print template.format("HostIP", "HostName", "SvcID", "SvcProto", "SvcPort", "ServiceName", "ServiceProduct", "ServiceVersion")
+                                else:
+                                        print 'HostIP\t\t\tHostName\tSvcID\tSvcProto\tSvcPort\tServiceName\tServiceProduct\tServiceVersion'
+		
+		
+			while True:
+				hostrow = hostquery.fetch_row()
+				if (not hostrow):
+					break
+				hostid = hostrow[0][0]
+				filtertext = 'WHERE ParentHost=' + hostid + ' && ServicePort=' + filter[1]
+				derp.query("SELECT * FROM NmapServices " + filtertext)
+				servicequery = derp.use_result()
+
+				while True:
+					servicerow = servicequery.fetch_row()
+					if (not servicerow):
+						break
+					if (args.outtable):
+                                        	print template.format(hostrow[0][1], hostrow[0][4], servicerow[0][0], servicerow[0][1], servicerow[0][2], servicerow[0][3], servicerow[0][6], servicerow[0][7])
+                                	else:
+						print hostrow[0][1] + '\t\t' + hostrow[0][4] + '\t\t' + servicerow[0][0] + '\t\t' + servicerow[0][1] + '\t\t' + servicerow[0][2] + '\t\t' + servicerow[0][3] + '\t\t' + servicerow[0][6] + '\t\t' + servicerow[0][7]
+	else:
+		hostcon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+		hostcon.query("SELECT * FROM NmapHosts WHERE ParentScan=" + scanid)
+		hostquery = hostcon.use_result()
+		
+                if (not args.notitle):
+                	if (args.outtable):
+                        	print template.format("HostIP", "HostName", "SvcID", "SvcProto", "SvcPort", "ServiceName", "ServiceProduct", "ServiceVersion")
+                        else:
+                        	print 'HostIP\t\t\tHostName\tSvcID\tSvcProto\tSvcPort\tServiceName\tServiceProduct\tServiceVersion'
+		
+		while True:
+			hostrow = hostquery.fetch_row()
+			if (not hostrow):
+				break
+			hostid = hostrow[0][0]
+			filtertext = 'WHERE ParentHost=' + hostid
+			derp.query("SELECT * FROM NmapServices " + filtertext)
+			servicequery = derp.use_result()
+
+			while True:
+				servicerow = servicequery.fetch_row()
+				if (not servicerow):
+					break
+				if (args.outtable):
+					print template.format(hostrow[0][1], hostrow[0][4], servicerow[0][0], servicerow[0][1], servicerow[0][2], servicerow[0][3], servicerow[0][6], servicerow[0][7])
+                                else:
+					print hostrow[0][1] + '\t\t' + hostrow[0][4] + '\t\t' + servicerow[0][0] + '\t\t' + servicerow[0][1] + '\t\t' + servicerow[0][2] + '\t\t' + servicerow[0][3] + '\t\t' + servicerow[0][6] + '\t\t' + servicerow[0][7]
+		
+		
+def raw_query( query ):
+	querycon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+        querycon.query( query )
+        query = querycon.use_result()
+        while True:
+        	queryrow = query.fetch_row()
+                if (not queryrow):
+                	break
+		print queryrow
+
+
+def create_vector( filter ):
+	querycon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+	filter = filter.split("|")
+	cquery = "INSERT INTO Vectors (VectorServiceID, VectorReference) VALUES (" + filter[0] + ", \"" + filter[1] + "\")"
+        querycon.query( cquery )
+
+def list_vectors( filter ):
+	
+	template = "{0:10}|{1:20}|{2:15}|{3:30}|{4:15}|{5:45}"
+	vquerycon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+       	vquery = "SELECT * FROM Vectors"
+	vquerycon.query( vquery )
+        vquery = vquerycon.use_result()
+
+	if (not args.notitle):
+        	if (args.outtable):
+                	print template.format("VectorID", "HostIP", "ServicePort", "ServiceProduct", "ServiceVersion", "VectorReference")
+		else:
+			print 'VectorID\tHostIP\tServicePort\tServiceProduct\tServiceVersion\tVectorReference'
+
+        while True:
+                vqueryrow = vquery.fetch_row()
+                if (not vqueryrow):
+                        break
+                squerycon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+		squery = "SELECT * FROM NmapServices WHERE ServiceID=" + vqueryrow[0][1]
+		squerycon.query( squery )
+		squery = squerycon.use_result()
+		while True:
+			squeryrow = squery.fetch_row()
+			if (not squeryrow):
+				break
+			hquerycon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+			hquery = "SELECT * FROM NmapHosts WHERE HostID=" + squeryrow[0][4]
+			hquerycon.query( hquery )
+			hquery = hquerycon.use_result()
+			while True:
+				hqueryrow = hquery.fetch_row()
+				if (not hqueryrow):
+					break
+				if (args.outtable):
+                                        print template.format(vqueryrow[0][0], hqueryrow[0][1], squeryrow[0][2], squeryrow[0][6], squeryrow[0][7], vqueryrow[0][2])
+                                else:
+                                        print vqueryrow[0][0] + '\t\t' + hqueryrow[0][1] + '\t\t' + squeryrow[0][2] + '\t\t' + squeryrow[0][6] + '\t\t' + squeryrow[0][7] + '\t\t' + vqueryrow[0][2]
+
+
+def get_scans( filter ):
+        derp = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+        derp.query("SELECT * FROM NmapScans")
+        hostrow = derp.use_result()
+        if (args.outtable):
+                template = "{0:15}|{1:20}|{2:25}|{3:100}"
+
+        if (not args.notitle):
+                if (args.outtable):
+                        print template.format("ScanID", "ScanDuration", "ScanTime", "ScanOptions")
+                else:
+                        print "ScanID\t\t\tScanDuration\t\t\tScanTime\t\t\tScanOptions"
+
+        while True:
+                row = hostrow.fetch_row()
+                if not row:
+                        break
+                if (args.outtable):
+                        print template.format(row[0][0], row[0][2], row[0][1], row[0][3])
+                else:
+                        print row[0][0] + "\t\t" + row[0][2] + "\t\t\t" + row[0][1] + "\t\t\t\t\t" + row[0][3]
+	
+
+def scan_nmap( options ):
+	print "Performing nmap scan with options: " + options
+	pipe = subprocess.Popen(["./nmapdb.pl", options], stdout=subprocess.PIPE)
+	result = pipe.stdout.read()
+	print result
+	print "nmap scan complete. The results have been inserted into the secint db"
+
+
+if (args.services):
+
+	get_services( args.filter )
+
+elif (args.hosts):
+
+	get_hosts( args.filter )	
+
+elif (args.scans):
+
+	get_scans( args.filter )
+
+elif (args.rawquery):
+
+	raw_query( args.filter )
+
+elif (args.createvector):
+	
+	create_vector( args.filter )
+
+elif (args.listvectors):
+	
+	list_vectors( args.filter )
+
+elif (args.scannmap):
+	
+	scan_nmap( args.filter )
+
+
+else:
+	
+	print 'not implemened'
