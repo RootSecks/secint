@@ -11,7 +11,7 @@ optional arguments: <br>
   -nT, --notitle        Surpresses column titles to make output suitable for scripts <br>
   -rQ, --rawquery       Run a raw query against the database <br>
   -oT, --outtable       Output as pretty table <br>
-  -cV, --createvector   Create a new attack vector record <br>
+  -cV, --createvector   Create a new attack vector record (This is also kind of broken, expects a parameter (in the filter arg) of "serviceid|urlorreferenceforvector") <br>
   -lV, --listvectors    List all vectors <br>
   -sN, --scannmap       Run an nmap scan <br>
   -sS SELECTSCAN, --selectscan SELECTSCAN Return objects from a specific scan <br>
