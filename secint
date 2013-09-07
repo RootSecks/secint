@@ -10,8 +10,10 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-lS', '--services', help='Display a list of services', action='store_true')
 parser.add_argument('-lSc', '--scans', help='Display all the scans', action='store_true')
 parser.add_argument('-lH', '--hosts', help='Display a list of hosts', action='store_true')
+parser.add_argument('-lC', '--credentials', help='Display list of credentials', action='store_true')
 parser.add_argument('-nT', '--notitle', help='Surpresses column titles to make output suitable for scripts', action='store_true')
 parser.add_argument('-rQ', '--rawquery', help='Run a raw query against the database', action='store_true')
+parser.add_argument('-aC', '--addcredential', help='Add a credential', action='store_true')
 parser.add_argument('-oT', '--outtable', help='Output as pretty table', action='store_true')
 parser.add_argument('-cV', '--createvector', help='Create a new attack vector record', action='store_true')
 parser.add_argument('-lV', '--listvectors', help='List all vectors', action='store_true')
@@ -265,6 +267,10 @@ def get_scans( filter ):
                         print row[0][0] + "\t\t" + row[0][2] + "\t\t\t" + row[0][1] + "\t\t\t\t\t" + row[0][3]
 	
 
+def list_credentials( filter ):
+	print "Not Implemented"
+
+
 def scan_nmap( options ):
 	print "Performing nmap scan with options: " + options
 	pipe = subprocess.Popen(["./nmapdb.pl", options], stdout=subprocess.PIPE)
@@ -301,6 +307,9 @@ elif (args.scannmap):
 	
 	scan_nmap( args.filter )
 
+elif (args.credentials):
+
+	list_credentials( args.filter)
 
 else:
 	
