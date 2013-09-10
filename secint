@@ -317,7 +317,7 @@ class SecIntWeb:
 			"<script type=\"text/javascript\" src=\"./jsgl.js\"></script>"
 			"</head"
 			"<body>"
-			"<div id=\"panel\" style=\"width: 640px; height: 480px\"></div>"
+			"<div id=\"panel\" style=\"width: 1024px; height: 480px\"></div>"
 			"<script type=\"text/javascript\">"
 			"myPanel = new jsgl.Panel(document.getElementById(\"panel\"));")
 		
@@ -329,13 +329,13 @@ class SecIntWeb:
 				hostList.append(host)
 
 		hostNum = len(hostList)
-		hostWidth = 640/hostNum
+		hostWidth = 1024/hostNum
 		
 		hostCounter = 0
 		for host in hostList:
 			pageText = pageText + "host" + str(hostCounter) + " = myPanel.createRectangle();"
-			pageText = pageText + "host" + str(hostCounter) + ".setWidth(" + str(hostWidth) + ");"
-			pageText = pageText + "host" + str(hostCounter) + ".setHeight(10);"
+			pageText = pageText + "host" + str(hostCounter) + ".setWidth(" + str(hostWidth - 5) + ");"
+			pageText = pageText + "host" + str(hostCounter) + ".setHeight(25);"
 			pageText = pageText + "host" + str(hostCounter) + ".setX(" + str(hostWidth * hostCounter) + ");"
 			pageText = pageText + "host" + str(hostCounter) + ".setY(0);" 
 			pageText = pageText + "myPanel.addElement(host" + str(hostCounter) + ");"
