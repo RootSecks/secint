@@ -42,7 +42,7 @@ my $scantime = $npsession->finish_time() - $npsession->start_time();
 
 print $scantime . "\r\n";
 
-$dbh->do("INSERT INTO NmapScans (ScanTime, ScanDuration, ScanOptions) VALUES (NOW(), \"" . $scantime . "\", \"" . $allargs . "\")");
+$dbh->do("INSERT INTO SectintScans (ScanTime, ScanDuration, ScanOptions, ScanType) VALUES (NOW(), \"" . $scantime . "\", \"" . $allargs . "\", \"nmap\")");
 
 my $lastscanid = $dbh->selectrow_array('SELECT LAST_INSERT_ID()');
 

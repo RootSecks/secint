@@ -57,7 +57,7 @@ for line in f:
 
 def get_latest_scan_id():
 	con = _mysql.connect(dbhost, dbuser, dbpass, dbname)
-        con.query("SELECT * FROM NmapScans ORDER BY ScanTime DESC LIMIT 1")
+        con.query("SELECT * FROM SecintScans ORDER BY ScanTime DESC LIMIT 1")
         nmapscans = con.use_result()
         scanid = nmapscans.fetch_row()[0][0]
 	if ( args.selectscan > 0 ):
@@ -217,28 +217,28 @@ def get_scans( filter ):
 		filterarg = ''
 
         derp = _mysql.connect(dbhost, dbuser, dbpass, dbname)
-        derp.query("SELECT * FROM NmapScans")
+        derp.query("SELECT * FROM SecintScans")
         hostrow = derp.use_result()
         if (args.outtable):
-                template = "{0:15}|{1:20}|{2:25}|{3:100}"
+                template = "{0:15}|{1:10}|{2:20}|{3:25}|{4:100}"
 
         if (not args.notitle):
                 if (args.outtable):
-                        print template.format("ScanID", "ScanDuration", "ScanTime", "ScanOptions")
+                        print template.format("ScanID", "ScanType", "ScanDuration", "ScanTime", "ScanOptions")
                 else:
-                        print "ScanID\t\t\tScanDuration\t\t\tScanTime\t\t\tScanOptions"
+                        print "ScanID\t\t\tScanType\t\t\tScanDuration\t\t\tScanTime\t\t\tScanOptions"
 
         while True:
                 row = hostrow.fetch_row()
                 if not row:
                         break
-		greptext = row[0][0] + "\t\t" + row[0][2] + "\t\t\t" + row[0][1] + "\t\t\t\t\t" + row[0][3]
+		greptext = row[0][0] + "\t\t" + row[0][4] + "\t\t" + row[0][2] + "\t\t\t" + row[0][1] + "\t\t\t\t\t" + row[0][3]
 		
 		if filterarg in greptext:
                 	if (args.outtable):
-                        	print template.format(row[0][0], row[0][2], row[0][1], row[0][3])
+                        	print template.format(row[0][0], row[0][4], row[0][2], row[0][1], row[0][3])
                 	else:
-                        	print row[0][0] + "\t\t" + row[0][2] + "\t\t\t" + row[0][1] + "\t\t\t\t\t" + row[0][3]
+                        	print row[0][0] + "\t\t" + row[0][4] + "\t\t" + row[0][2] + "\t\t\t" + row[0][1] + "\t\t\t\t\t" + row[0][3]
 	
 
 def list_credentials( filter ):
