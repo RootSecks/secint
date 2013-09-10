@@ -1,9 +1,20 @@
 #!/usr/bin/python
 
+import imp
 import _mysql
 import sys
 import argparse
 import subprocess
+
+
+
+try:
+	imp.find_module('cherrypy')
+	cherryFound = True
+except ImportError:
+	cherryFound = False
+
+
 
 parser = argparse.ArgumentParser()
 
@@ -20,6 +31,7 @@ parser.add_argument('-lV', '--listvectors', help='List all vectors', action='sto
 parser.add_argument('-sN', '--scannmap', help='Run an nmap scan', action='store_true')
 parser.add_argument('-sS', '--selectscan', help='Return objects from a specific scan')
 parser.add_argument('-d', '--debug', help="Enable debug messages", action="store_true")
+parser.add_argument('-wI', '--webinterface', help="Start Web Interface", action="store_true")
 parser.add_argument('filter', type=str, nargs='?', help='Filters returned results')
 parser.add_argument('serviceid', type=str, nargs='?', help='ID of the service this vector exploits')
 args = parser.parse_args()
@@ -109,11 +121,13 @@ def get_services( filter ):
 	hostcon.query("SELECT * FROM NmapHosts WHERE ParentScan=" + scanid)
 	hostquery = hostcon.use_result()
 	
+	returnString = ''
+
 	if (not args.notitle):
 		if (args.outtable):
-			print template.format("HostIP", "HostName", "SvcID", "SvcProto", "SvcPort", "ServiceName", "ServiceProduct", "ServiceVersion")
+			returnString = returnString + template.format("HostIP", "HostName", "SvcID", "SvcProto", "SvcPort", "ServiceName", "ServiceProduct", "ServiceVersion")
 		else:
-			print 'HostIP\t\t\tHostName\tSvcID\tSvcProto\tSvcPort\tServiceName\tServiceProduct\tServiceVersion'
+			returnString = returnString + 'HostIP\t\t\tHostName\tSvcID\tSvcProto\tSvcPort\tServiceName\tServiceProduct\tServiceVersion'
 	
 	if (filter):
 		filterarg = filter
@@ -139,10 +153,10 @@ def get_services( filter ):
 
 			if filterarg in greptext:
 				if (args.outtable):
-					print template.format(hostrow[0][1], hostrow[0][4], servicerow[0][0], servicerow[0][1], servicerow[0][2], servicerow[0][3], servicerow[0][6], servicerow[0][7])
+					returnString = returnString + template.format(hostrow[0][1], hostrow[0][4], servicerow[0][0], servicerow[0][1], servicerow[0][2], servicerow[0][3], servicerow[0][6], servicerow[0][7])
 				else:
-					print hostrow[0][1] + '\t\t' + hostrow[0][4] + '\t\t' + servicerow[0][0] + '\t\t' + servicerow[0][1] + '\t\t' + servicerow[0][2] + '\t\t' + servicerow[0][3] + '\t\t' + servicerow[0][6] + '\t\t' + servicerow[0][7]
-	
+					returnString = returnString +  hostrow[0][1] + '\t\t' + hostrow[0][4] + '\t\t' + servicerow[0][0] + '\t\t' + servicerow[0][1] + '\t\t' + servicerow[0][2] + '\t\t' + servicerow[0][3] + '\t\t' + servicerow[0][6] + '\t\t' + servicerow[0][7]
+	return returnString
 		
 def raw_query( query ):
 	querycon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
@@ -253,9 +267,62 @@ def scan_nmap( options ):
 	print "nmap scan complete. The results have been inserted into the secint db"
 
 
+
+
+class SecIntWeb:
+	def index(self, **args):
+		
+		pageText = '<html><body>'
+
+		if not args:
+				
+			pageText = pageText + "Latest Service Data <br>:"
+
+			
+			pageText = pageText + get_services('')
+							
+					
+
+		else:
+			if 'd' in args:
+				pageText = pageText + "YES"
+					
+
+		pageText = pageText + '</body></html>'	
+		return pageText
+	
+	index.exposed = True	
+
+
+
+
+
+def start_web_interface( filter ):
+
+	if (cherryFound):
+
+		print "CherryPy Found, starting web server"	
+
+		import cherrypy	
+
+		cherrypy.server.socket_port = 9191
+		cherrypy.server.socket_host = '0.0.0.0'
+		cherrypy.config.update({ "environment": "embedded" })
+		
+		cherrypy.quickstart(SecIntWeb())
+
+	else:
+		print "CherryPy Not Found :( "
+		
+
+
+
+
+
+
 if (args.services):
 
-	get_services( args.filter )
+	print get_services( args.filter )
 
 elif (args.hosts):
 
@@ -284,6 +351,10 @@ elif (args.scannmap):
 elif (args.credentials):
 
 	list_credentials( args.filter)
+
+elif (args.webinterface):
+
+	start_web_interface( filter )
 
 else:
 	
