@@ -5,7 +5,10 @@ import _mysql
 import sys
 import argparse
 import subprocess
+import os
 
+
+APP_PATH = os.path.abspath(os.path.dirname(__file__))
 
 
 try:
@@ -13,7 +16,6 @@ try:
 	cherryFound = True
 except ImportError:
 	cherryFound = False
-
 
 
 parser = argparse.ArgumentParser()
@@ -29,9 +31,10 @@ parser.add_argument('-oT', '--outtable', help='Output as pretty table', action='
 parser.add_argument('-cV', '--createvector', help='Create a new attack vector record', action='store_true')
 parser.add_argument('-lV', '--listvectors', help='List all vectors', action='store_true')
 parser.add_argument('-sN', '--scannmap', help='Run an nmap scan', action='store_true')
-parser.add_argument('-sS', '--selectscan', help='Return objects from a specific scan')
+parser.add_argument('-sS', '--selectscan', help='Return objects from a specific scan', type=int)
 parser.add_argument('-d', '--debug', help="Enable debug messages", action="store_true")
 parser.add_argument('-wI', '--webinterface', help="Start Web Interface", action="store_true")
+parser.add_argument('-wP', '--webport', help="Define an optional port for the web interface (Default 9191)", type=int)
 parser.add_argument('filter', type=str, nargs='?', help='Filters returned results')
 parser.add_argument('serviceid', type=str, nargs='?', help='ID of the service this vector exploits')
 args = parser.parse_args()
@@ -73,7 +76,7 @@ def get_latest_scan_id():
         nmapscans = con.use_result()
         scanid = nmapscans.fetch_row()[0][0]
 	if ( args.selectscan > 0 ):
-		scanid = args.selectscan
+		scanid = str(args.selectscan)
 	return scanid
 	
 
@@ -128,6 +131,8 @@ def get_services( filter ):
 			returnString = returnString + template.format("HostIP", "HostName", "SvcID", "SvcProto", "SvcPort", "ServiceName", "ServiceProduct", "ServiceVersion")
 		else:
 			returnString = returnString + 'HostIP\t\t\tHostName\tSvcID\tSvcProto\tSvcPort\tServiceName\tServiceProduct\tServiceVersion'
+
+		returnString = returnString + "\r\n"
 	
 	if (filter):
 		filterarg = filter
@@ -156,6 +161,9 @@ def get_services( filter ):
 					returnString = returnString + template.format(hostrow[0][1], hostrow[0][4], servicerow[0][0], servicerow[0][1], servicerow[0][2], servicerow[0][3], servicerow[0][6], servicerow[0][7])
 				else:
 					returnString = returnString +  hostrow[0][1] + '\t\t' + hostrow[0][4] + '\t\t' + servicerow[0][0] + '\t\t' + servicerow[0][1] + '\t\t' + servicerow[0][2] + '\t\t' + servicerow[0][3] + '\t\t' + servicerow[0][6] + '\t\t' + servicerow[0][7]
+				
+				returnString = returnString + "\r\n"
+
 	return returnString
 		
 def raw_query( query ):
@@ -174,6 +182,7 @@ def create_vector( serviceid ):
 	filter = filter.split("|")
 	cquery = "INSERT INTO Vectors (VectorServiceID, VectorReference) VALUES (" + filter[0] + ", \"" + filter[1] + "\")"
         querycon.query( cquery )
+
 
 def list_vectors( filter ):
 	
@@ -267,34 +276,93 @@ def scan_nmap( options ):
 	print "nmap scan complete. The results have been inserted into the secint db"
 
 
+class host():
+	def __init__(self):
+		self.hostipaddr = None
+		self.hoststatus = None
+		self.hostname = None
+		self.hostos = None
+	def outputall( self ):
+		return self.hostipaddr + self.hoststatus + self.hostname + self.hostos
+
+
+
+def temp_get_hosts():
+
+        scanid = get_latest_scan_id()
+        derp = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+	derp.query("SELECT * FROM NmapHosts WHERE ParentScan=" + scanid)
+	hostrow = derp.use_result()
+	hostList = list()
+	while True:
+		row = hostrow.fetch_row()
+		if not row:
+			break
+		tmpHost = host()
+		tmpHost.hostipaddr = row[0][1]
+		tmpHost.hoststatus = row[0][3]
+		tmpHost.hostname = row[0][4]
+		tmpHost.hostos = row[0][5]		
+		hostList.append(tmpHost)
+	return hostList
+
+
 
 
 class SecIntWeb:
+
 	def index(self, **args):
 		
-		pageText = '<html><body>'
+		pageText = ("<html><head>"
+			"<script type=\"text/javascript\" src=\"./jsgl.js\"></script>"
+			"</head"
+			"<body>"
+			"<div id=\"panel\" style=\"width: 640px; height: 480px\"></div>"
+			"<script type=\"text/javascript\">"
+			"myPanel = new jsgl.Panel(document.getElementById(\"panel\"));")
+		
+		
+		tmpHostList = temp_get_hosts()
+		hostList = list()
+		for host in tmpHostList:
+			if host.hoststatus == "up":
+				hostList.append(host)
+
+		hostNum = len(hostList)
+		hostWidth = 640/hostNum
+		
+		hostCounter = 0
+		for host in hostList:
+			pageText = pageText + "host" + str(hostCounter) + " = myPanel.createRectangle();"
+			pageText = pageText + "host" + str(hostCounter) + ".setWidth(" + str(hostWidth) + ");"
+			pageText = pageText + "host" + str(hostCounter) + ".setHeight(10);"
+			pageText = pageText + "host" + str(hostCounter) + ".setX(" + str(hostWidth * hostCounter) + ");"
+			pageText = pageText + "host" + str(hostCounter) + ".setY(0);" 
+			pageText = pageText + "myPanel.addElement(host" + str(hostCounter) + ");"
+			#pageText = pageText + host.outputall() 
+			hostCounter = hostCounter + 1
+		pageText = pageText + "</script>"		
 
 		if not args:
 				
 			pageText = pageText + "Latest Service Data <br>:"
-
 			
 			pageText = pageText + get_services('')
-							
-					
 
 		else:
 			if 'd' in args:
 				pageText = pageText + "YES"
-					
 
 		pageText = pageText + '</body></html>'	
 		return pageText
 	
-	index.exposed = True	
+	index.exposed = True
 
-
-
+	def jsgl_js( self ):
+		fileHandle = open('jsgl.js')
+		fileContents = fileHandle.read()
+		return fileContents
+	jsgl_js.exposed = True
 
 
 def start_web_interface( filter ):
@@ -303,21 +371,26 @@ def start_web_interface( filter ):
 
 		print "CherryPy Found, starting web server"	
 
-		import cherrypy	
+		import cherrypy
 
-		cherrypy.server.socket_port = 9191
+		if args.webport > 0:
+			portnum = args.webport
+		else:
+			portnum = 9191
+
+		if (args.debug):
+			print portnum
+
+		cherrypy.server.socket_port = portnum
 		cherrypy.server.socket_host = '0.0.0.0'
-		cherrypy.config.update({ "environment": "embedded" })
 		
+		#cherrypy.config.update({ "environment": "embedded" })
+
 		cherrypy.quickstart(SecIntWeb())
 
 	else:
 		print "CherryPy Not Found :( "
 		
-
-
-
-
 
 
 if (args.services):
@@ -358,4 +431,4 @@ elif (args.webinterface):
 
 else:
 	
-	print 'not implemened'
+	print 'not implemened: ' + APP_PATH

@@ -22,4 +22,3 @@ optional arguments:  <br>
   -wI, --webinterface   Start Web Interface <br>
   -wP WEBPORT, --webport WEBPORT Define an option port for the web interface (Default 9191) <br>
 
-
