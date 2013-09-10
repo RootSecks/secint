@@ -1,4 +1,4 @@
-usage: secint [-h] [-lS] [-lSc] [-lH] [-lC] [-nT] [-rQ] [-aC] [-oT] [-cV] [-lV] [-sN] [-sS SELECTSCAN] [-d] [filter] [serviceid]
+usage: secint [-h] [-lS] [-lSc] [-lH] [-lC] [-nT] [-rQ] [-aC] [-oT] [-cV] [-lV] [-sN] [-sS SELECTSCAN] [-d] [-wI] [-wP WEBPORT] [filter] [serviceid]
 <br>
 positional arguments: <br>
   filter                Filters returned results <br>
@@ -19,16 +19,7 @@ optional arguments:  <br>
   -sN, --scannmap       Run an nmap scan  <br>
   -sS SELECTSCAN, --selectscan SELECTSCAN Return objects from a specific scan  <br>
   -d, --debug           Enable debug messages  <br>
+  -wI, --webinterface   Start Web Interface <br>
+  -wP WEBPORT, --webport WEBPORT Define an option port for the web interface (Default 9191) <br>
 
 
-
-Usage example: <br>
-Step 1 - Scan a network: <br>
-	./secint -sN '-A 127.0.0.1' <br>
-Step 2 - View Stored Info from Scan: <br>
-	./secint -lH -oT <br>
-	./secint -lS -oT <br>
-Step 3 - Identify vulnerable services, and create a vector:<br>
-	./sectint -cV "1|www.exploit-db.com/blah" <br>
-Step 4 - View all the sweet attacl vectors you found: <br>
-	./sectint -lV <br>
