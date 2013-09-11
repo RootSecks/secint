@@ -332,25 +332,29 @@ class SecIntWeb:
 		
 		hostCounter = 0
 		for host in hostList:
-			pageText = pageText + "var host" + str(hostCounter) + " = myPanel.createRectangle();"
-			pageText = pageText + "host" + str(hostCounter) + ".setWidth(" + str(hostWidth - 5) + ");"
-			pageText = pageText + "host" + str(hostCounter) + ".setHeight(25);"
-			pageText = pageText + "host" + str(hostCounter) + ".setX(" + str(hostWidth * hostCounter) + ");"
-			pageText = pageText + "host" + str(hostCounter) + ".setY(0);" 
-			pageText = pageText + "myPanel.addElement(host" + str(hostCounter) + ");"
-                        pageText = pageText + "myPanel.addClickListener(function(eventArgs) {"
-                        pageText = pageText + "host" + str(hostCounter) + ".setCenterX(eventArgs.getX());"
-                        pageText = pageText + "});"
-
-			#pageText = pageText + host.outputall() 
+			pageText = pageText + ("var host" + str(hostCounter) + " = myPanel.createRectangle();"
+					"host" + str(hostCounter) + ".setWidth(" + str(hostWidth - 5) + ");"
+					"host" + str(hostCounter) + ".setHeight(25);"
+					"host" + str(hostCounter) + ".setX(" + str(hostWidth * hostCounter) + ");"
+					"host" + str(hostCounter) + ".setY(0);"
+					"host" + str(hostCounter) + ".getFill().setColor('rgb(255,0,0)');"
+					"myPanel.addElement(host" + str(hostCounter) + ");"
+					"var derp" + str(hostCounter) + " = function() {"
+					"document.getElementById('hostservice').innerHTML = '" + host.outputall() + "';"
+					"};"
+					"var lerp" + str(hostCounter) + " = function() {"
+					"document.getElementById('hostservice').innerHTML = ' ';"
+					"};"
+					"host" + str(hostCounter) + ".addMouseOverListener(derp" + str(hostCounter) + ");"
+					"host" + str(hostCounter) + ".addMouseOutListener(lerp" + str(hostCounter) + ");")								
 			hostCounter = hostCounter + 1
-		pageText = pageText + "myPanel.setCursor(jsgl.Cursor.E_RESIZE);"
-		pageText = pageText + "</script>"		
 
-		if not args:
-				
-			pageText = pageText + "No Args"
+		pageText = pageText + "</script>"		
 		
+		pageText = pageText + "<div id=\"hostservice\"></div>"
+		
+		if not args:
+			print "LERP"
 		else:
 			if 'd' in args:
 				pageText = pageText + "d Arg"
