@@ -18,26 +18,32 @@ except ImportError:
 	cherryFound = False
 
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(description="Security Intellegence Framework")
+mutgroup = parser.add_mutually_exclusive_group(required=True)
+#Primary Optional Arguments
+mutgroup.add_argument('-lS', '--services', help='List services', action='store_true')
+mutgroup.add_argument('-lSc', '--scans', help='List scans', action='store_true')
+mutgroup.add_argument('-lH', '--hosts', help='List hosts', action='store_true')
+mutgroup.add_argument('-lC', '--credentials', help='List credentials and hashes', action='store_true')
+mutgroup.add_argument('-lV', '--listVulns', help='List vulnerabilities', action='store_true')
+mutgroup.add_argument('-lVe', '--vectors', help='List vectors', action='store_true')
+mutgroup.add_argument('-wI', '--webinterface', help="Start web interface", action="store_true")
+mutgroup.add_argument('-rQ', '--rawquery', help='Run a raw query (CAUTION)', action='store_true')
+mutgroup.add_argument('-aC', '--addcredential', help='Add credentials', action='store_true')
+mutgroup.add_argument('-cV', '--createvector', help='Add vector', action='store_true')
+mutgroup.add_argument('-cVu', '--createvuln', help='Add vulnerability', action='store_true')
+mutgroup.add_argument('-sN', '--scannmap', metavar='NMAP OPTIONS', help='Run nmap scan')
 
-parser.add_argument('-lS', '--services', help='Display a list of services', action='store_true')
-parser.add_argument('-lSc', '--scans', help='Display all the scans', action='store_true')
-parser.add_argument('-lH', '--hosts', help='Display a list of hosts', action='store_true')
-parser.add_argument('-lC', '--credentials', help='Display list of credentials', action='store_true')
+#Modifiers
 parser.add_argument('-nT', '--notitle', help='Surpresses column titles to make output suitable for scripts', action='store_true')
-parser.add_argument('-rQ', '--rawquery', help='Run a raw query against the database', action='store_true')
-parser.add_argument('-aC', '--addcredential', help='Add a credential', action='store_true')
 parser.add_argument('-oT', '--outtable', help='Output as pretty table', action='store_true')
-parser.add_argument('-cV', '--createvector', help='Create a new attack vector record', action='store_true')
-parser.add_argument('-lVe', '--listvectors', help='List all vectors', action='store_true')
-parser.add_argument('-lV', '--listVulns', help='List vectors that have been upgraded to vulns', action='store_true')
-parser.add_argument('-sN', '--scannmap', help='Run an nmap scan', action='store_true')
 parser.add_argument('-sS', '--selectscan', help='Return objects from a specific scan', type=int)
 parser.add_argument('-d', '--debug', help="Enable debug messages", action="store_true")
-parser.add_argument('-wI', '--webinterface', help="Start Web Interface", action="store_true")
 parser.add_argument('-wP', '--webport', help="Define an optional port for the web interface (Default 9191)", type=int)
-parser.add_argument('filter', type=str, nargs='?', help='Filters returned results')
-parser.add_argument('serviceid', type=str, nargs='?', help='ID of the service this vector exploits')
+
+#Positionals
+parser.add_argument('filter', type=str, nargs='?', help='Filters output lists')
+
 args = parser.parse_args()
 
 
@@ -69,8 +75,6 @@ for line in f:
                 if (args.debug):
                         print "Database host found, putting: " + linearr[1] + " into dbhost variable"
 
-
-
 def get_latest_scan_id():
 	con = _mysql.connect(dbhost, dbuser, dbpass, dbname)
         con.query("SELECT * FROM SecintScans ORDER BY ScanTime DESC LIMIT 1")
@@ -90,13 +94,11 @@ def raw_query( query ):
                 	break
 		print queryrow
 
-
 def create_vector( serviceid ):
 	querycon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
 	filter = filter.split("|")
 	cquery = "INSERT INTO Vectors (VectorServiceID, VectorReference) VALUES (" + filter[0] + ", \"" + filter[1] + "\")"
         querycon.query( cquery )
-
 
 def list_vectors( filter ):
 	
@@ -145,7 +147,6 @@ def list_vectors( filter ):
 					else:
 						print vqueryrow[0][0] + '\t\t' + hqueryrow[0][1] + '\t\t' + squeryrow[0][2] + '\t\t' + squeryrow[0][6] + '\t\t' + squeryrow[0][7] + '\t\t' + vqueryrow[0][2]
 
-
 def get_scans( filter ):
 
 	if (filter):
@@ -177,10 +178,8 @@ def get_scans( filter ):
                 	else:
                         	print row[0][0] + "\t\t" + row[0][4] + "\t\t" + row[0][2] + "\t\t\t" + row[0][1] + "\t\t\t\t\t" + row[0][3]
 	
-
 def list_credentials( filter ):
 	print "Not Implemented"
-
 
 def scan_nmap( options ):
 	print "Performing nmap scan with options: " + options
@@ -188,7 +187,6 @@ def scan_nmap( options ):
 	result = pipe.stdout.read()
 	print result
 	print "nmap scan complete. The results have been inserted into the secint db"
-
 
 class host():
 	def __init__(self):
@@ -211,6 +209,13 @@ class service(host):
 	def outputall( self ):
 		return self.hostipaddr + self.hoststatus + self.hostname + self.hostos + self.serviceid + self.serviceproto + self.serviceport + self.servicename + self.servicename + self.serviceproduct + self.serviceversion
 
+class vector(service):
+	def __init__(self):
+		service.__init__(self)
+		self.vectorid = None
+		self.vectorref = None
+	def outputall( self ):
+		return self.hostipaddr + self.hoststatus + self.hostname + self.hostos + self.serviceid + self.serviceproto + self.serviceport + self.servicename + self.servicename + self.serviceproduct + self.serviceversion + self.vectorif + self.vectorref
 
 def get_hosts():
 
@@ -231,11 +236,9 @@ def get_hosts():
 		hostList.append(tmpHost)
 	return hostList
 
-
 def get_vulns():
 	vuln = mysql.connect(dbhost, dbuser, dbpass, dbname)
 	
-
 def get_services():
 	scanid = get_latest_scan_id()
 	derp = _mysql.connect(dbhost, dbuser, dbpass, dbname)
@@ -269,7 +272,41 @@ def get_services():
 			serviceList.append(tmpService)	
 	return serviceList	
 
-
+def get_vectors():
+	vquerycon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+	vquery = "SELECT * FROM Vectors"
+	vquerycon.query( vquery )
+	vquery = vquerycon.use_result()
+    	vectorList = list()
+	while True:
+		vqueryrow = vquery.fetch_row()
+		if not vqueryrow:
+			break
+		squerycon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+		squery = "SELECT * FROM NmapServices WHERE ServiceID=" + vqueryrow[0][1]
+		squerycon.query( squery )
+		squery = squerycon.use_result()
+		while True:
+			squeryrow = squery.fetch_row()
+			if (not squeryrow):
+				break
+			hquerycon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+			hquery = "SELECT * FROM NmapHosts WHERE HostID=" + squeryrow[0][4]
+			hquerycon.query( hquery )
+			hquery = hquerycon.use_result()
+			while True:
+				hqueryrow = hquery.fetch_row()
+				if (not hqueryrow):
+					break
+				tmpVector = vector()
+				tmpVector.vectorid = vqueryrow[0][0]
+				tmpVector.hostipaddr = hqueryrow[0][1]
+				tmpVector.serviceport = squeryrow[0][2]
+				tmpVector.serviceproduct = squeryrow[0][6]
+				tmpVector.serviceversion = squeryrow[0][7]
+				tmpVector.vectorref = vqueryrow[0][2]
+				vectorList.append(tmpVector)
+	return vectorList
 
 class SecIntWeb:
 
@@ -329,7 +366,6 @@ class SecIntWeb:
 		return fileContents
 	jsgl_js.exposed = True
 
-
 def start_web_interface( filter ):
 
 	if (cherryFound):
@@ -354,11 +390,6 @@ def start_web_interface( filter ):
 	else:
 		print "CherryPy Not Found :( "
 		
-
-
-
-
-
 def display_hosts( filter ):
 	if (filter):
 		filtertext = filter
@@ -387,7 +418,6 @@ def display_hosts( filter ):
 			else:
 				print host.hostipaddr + "\t\t" + host.hoststatus + "\t\t\t" + host.hostname + "\t\t\t\t\t" + host.hostos
 
-
 def display_services( filter ):
 	
 	template = "{0:15}|{1:25}|{2:8}|{3:8}|{4:8}|{5:15}|{6:45}|{7:35}"
@@ -411,12 +441,32 @@ def display_services( filter ):
 				print template.format(service.hostipaddr, service.hostname, service.serviceid, service.serviceproto, service.serviceport, service.servicename, service.serviceproduct, service.serviceversion)
 			else:
 				print service.hostipaddr + '\t\t' + service.hostname + '\t\t' + service.serviceid + '\t\t' + service.serviceproto + '\t\t' + service.serviceport + '\t\t' + service.servicename + '\t\t' + service.serviceproduct + '\t\t' + service.serviceversion
+	
+def display_vectors( filter ):
+	if (filter):
+		filterarg = filter
+	else:
+		filterarg = ''
+	template = "{0:10}|{1:20}|{2:15}|{3:30}|{4:15}|{5:45}"
+	if (not args.notitle):
+        	if (args.outtable):
+                	print template.format("VectorID", "HostIP", "ServicePort", "ServiceProduct", "ServiceVersion", "VectorReference")
+		else:
+			print 'VectorID\tHostIP\tServicePort\tServiceProduct\tServiceVersion\tVectorReference'
+	
+	vectorList = get_vectors()
+	
+	for vector in vectorList:
+		greptext = vector.vectorid + '\t\t' + vector.hostipaddr + '\t\t' + vector.serviceport + '\t\t' + vector.serviceproduct + '\t\t' + vector.serviceversion + '\t\t' + vector.vectorref
+		if filterarg in greptext:
+			if (args.outtable):
+				print template.format(vector.vectorid, vector.hostipaddr, vector.serviceport, vector.serviceproduct, vector.serviceversion, vector.vectorref)
+			else:
+				print vector.vectorid + '\t\t' + vector.hostipaddr + '\t\t' + vector.serviceport + '\t\t' + vector.serviceproduct + '\t\t' + vector.serviceversion + '\t\t' + vector.vectorref
+
 		
-
-
-
 if (args.services):
-
+	
 	display_services( args.filter )	
 
 elif (args.hosts):
@@ -433,15 +483,15 @@ elif (args.rawquery):
 
 elif (args.createvector):
 	
-	create_vector( args.serviceid )
+	create_vector( args.filter )
 
-elif (args.listvectors):
+elif (args.vectors):
 	
-	list_vectors( args.filter )
+	display_vectors( args.filter )
 
-elif (args.scannmap):
+elif (args.scannmap != None):
 	
-	scan_nmap( args.filter )
+	scan_nmap( args.scannmap )
 
 elif (args.credentials):
 
