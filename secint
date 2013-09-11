@@ -32,7 +32,7 @@ mutgroup.add_argument('-rQ', '--rawquery', help='Run a raw query (CAUTION)', act
 mutgroup.add_argument('-aC', '--addcredential', help='Add credentials', action='store_true')
 mutgroup.add_argument('-cV', '--createvector', help='Add vector', action='store_true')
 mutgroup.add_argument('-cVu', '--createvuln', help='Add vulnerability', action='store_true')
-mutgroup.add_argument('-sN', '--scannmap', metavar='NMAP OPTIONS', help='Run nmap scan')
+mutgroup.add_argument('-sN', '--scannmap', metavar='NMAPOPTIONS', help='Run nmap scan')
 
 #Modifiers
 parser.add_argument('-nT', '--notitle', help='Surpresses column titles to make output suitable for scripts', action='store_true')
