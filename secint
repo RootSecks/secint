@@ -29,7 +29,8 @@ parser.add_argument('-rQ', '--rawquery', help='Run a raw query against the datab
 parser.add_argument('-aC', '--addcredential', help='Add a credential', action='store_true')
 parser.add_argument('-oT', '--outtable', help='Output as pretty table', action='store_true')
 parser.add_argument('-cV', '--createvector', help='Create a new attack vector record', action='store_true')
-parser.add_argument('-lV', '--listvectors', help='List all vectors', action='store_true')
+parser.add_argument('-lVe', '--listvectors', help='List all vectors', action='store_true')
+parser.add_argument('-lV', '--listVulns', help='List vectors that have been upgraded to vulns', action='store_true')
 parser.add_argument('-sN', '--scannmap', help='Run an nmap scan', action='store_true')
 parser.add_argument('-sS', '--selectscan', help='Return objects from a specific scan', type=int)
 parser.add_argument('-d', '--debug', help="Enable debug messages", action="store_true")
@@ -78,94 +79,7 @@ def get_latest_scan_id():
 	if ( args.selectscan > 0 ):
 		scanid = str(args.selectscan)
 	return scanid
-	
-
-
-def get_hosts( filter ):
-        scanid = get_latest_scan_id()
-        derp = _mysql.connect(dbhost, dbuser, dbpass, dbname)
-	
-	if (filter):
-		filtertext = filter
-        else:
-		filtertext = ''
-		
-	if (args.debug):
-		print "Filtertext: " + filtertext
-	
-	derp.query("SELECT * FROM NmapHosts WHERE ParentScan=" + scanid)
-	hostrow = derp.use_result()
-	if (args.outtable):
-		template = "{0:15}|{1:10}|{2:25}|{3:10}"	
-	
-	if (not args.notitle):
-		if (args.outtable):
-			print template.format("HostIP", "HostStatus", "HostName", "HostOS")
-		else:
-			print "HostIP\t\t\tHostStatus\t\t\tHostName\t\t\tHostOS"
-	
-	while True:
-		row = hostrow.fetch_row()
-		if not row:
-			break
-		greptext = row[0][1] + "\t\t" + row[0][3] + "\t\t\t" + row[0][4] + "\t\t\t\t\t" + row[0][5]
-		if filtertext in greptext:
-			if (args.outtable):
-				print template.format(row[0][1], row[0][3], row[0][4], row[0][5])
-			else:
-				print row[0][1] + "\t\t" + row[0][3] + "\t\t\t" + row[0][4] + "\t\t\t\t\t" + row[0][5]
-
-
-def get_services( filter ):
-	scanid = get_latest_scan_id()
-        derp = _mysql.connect(dbhost, dbuser, dbpass, dbname)
-	template = "{0:15}|{1:25}|{2:8}|{3:8}|{4:8}|{5:15}|{6:45}|{7:35}"
-	hostcon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
-	hostcon.query("SELECT * FROM NmapHosts WHERE ParentScan=" + scanid)
-	hostquery = hostcon.use_result()
-	
-	returnString = ''
-
-	if (not args.notitle):
-		if (args.outtable):
-			returnString = returnString + template.format("HostIP", "HostName", "SvcID", "SvcProto", "SvcPort", "ServiceName", "ServiceProduct", "ServiceVersion")
-		else:
-			returnString = returnString + 'HostIP\t\t\tHostName\tSvcID\tSvcProto\tSvcPort\tServiceName\tServiceProduct\tServiceVersion'
-
-		returnString = returnString + "\r\n"
-	
-	if (filter):
-		filterarg = filter
-	else:
-		filterarg = ''
-
-	while True:
-		hostrow = hostquery.fetch_row()
-		if (not hostrow):
-			break
-		hostid = hostrow[0][0]
-		filtertext = 'WHERE ParentHost=' + hostid
-		derp.query("SELECT * FROM NmapServices " + filtertext)
-		servicequery = derp.use_result()
-
-		while True:
-			servicerow = servicequery.fetch_row()
-			if (not servicerow):
-				break
-			greptext = hostrow[0][1] + '\t\t' + hostrow[0][4] + '\t\t' + servicerow[0][0] + '\t\t' + servicerow[0][1] + '\t\t' + servicerow[0][2] + '\t\t' + servicerow[0][3] + '\t\t' + servicerow[0][6] + '\t\t' + servicerow[0][7]
-			if (args.debug):
-				print "Check if: " + greptext + " contains: " + filterarg
-
-			if filterarg in greptext:
-				if (args.outtable):
-					returnString = returnString + template.format(hostrow[0][1], hostrow[0][4], servicerow[0][0], servicerow[0][1], servicerow[0][2], servicerow[0][3], servicerow[0][6], servicerow[0][7])
-				else:
-					returnString = returnString +  hostrow[0][1] + '\t\t' + hostrow[0][4] + '\t\t' + servicerow[0][0] + '\t\t' + servicerow[0][1] + '\t\t' + servicerow[0][2] + '\t\t' + servicerow[0][3] + '\t\t' + servicerow[0][6] + '\t\t' + servicerow[0][7]
-				
-				returnString = returnString + "\r\n"
-
-	return returnString
-		
+			
 def raw_query( query ):
 	querycon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
         querycon.query( query )
@@ -285,9 +199,20 @@ class host():
 	def outputall( self ):
 		return self.hostipaddr + self.hoststatus + self.hostname + self.hostos
 
+class service(host):
+	def __init__(self):
+		host.__init__(self)
+		self.serviceid = None
+		self.serviceproto = None
+		self.serviceport = None
+		self.servicename = None
+		self.serviceproduct = None
+		self.serviceversion = None
+	def outputall( self ):
+		return self.hostipaddr + self.hoststatus + self.hostname + self.hostos + self.serviceid + self.serviceproto + self.serviceport + self.servicename + self.servicename + self.serviceproduct + self.serviceversion
 
 
-def temp_get_hosts():
+def get_hosts():
 
         scanid = get_latest_scan_id()
         derp = _mysql.connect(dbhost, dbuser, dbpass, dbname)
@@ -307,22 +232,59 @@ def temp_get_hosts():
 	return hostList
 
 
+def get_vulns():
+	vuln = mysql.connect(dbhost, dbuser, dbpass, dbname)
+	
+
+def get_services():
+	scanid = get_latest_scan_id()
+	derp = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+	hostcon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+	hostcon.query("SELECT * FROM NmapHosts WHERE ParentScan=" + scanid)
+	hostquery = hostcon.use_result()
+	serviceList = list()
+	while True:
+		hostrow = hostquery.fetch_row()
+		if (not hostrow):
+			break
+		hostid = hostrow[0][0]
+		filtertext = 'WHERE ParentHost=' + hostid
+		derp.query("SELECT * FROM NmapServices " + filtertext)
+		servicequery = derp.use_result()
+		while True:
+			servicerow = servicequery.fetch_row()
+			if (not servicerow):
+				break
+			tmpService = service()
+			tmpService.hostipaddr = hostrow[0][1]
+			tmpService.hoststatus = hostrow[0][3]
+			tmpService.hostname = hostrow[0][4]
+			tmpService.hostos = hostrow[0][5]
+			tmpService.serviceid = servicerow[0][0]
+			tmpService.serviceproto = servicerow[0][1]
+			tmpService.serviceport = servicerow[0][2]
+			tmpService.servicename = servicerow[0][3]
+			tmpService.serviceproduct = servicerow[0][6]
+			tmpService.serviceversion = servicerow[0][7]
+			serviceList.append(tmpService)	
+	return serviceList	
+
 
 
 class SecIntWeb:
 
 	def index(self, **args):
 		
-		pageText = ("<html><head>"
+		pageText = ("<html><head>"		
 			"<script type=\"text/javascript\" src=\"./jsgl.js\"></script>"
-			"</head"
+			"</head>"
 			"<body>"
 			"<div id=\"panel\" style=\"width: 1024px; height: 480px\"></div>"
 			"<script type=\"text/javascript\">"
 			"myPanel = new jsgl.Panel(document.getElementById(\"panel\"));")
 		
 		
-		tmpHostList = temp_get_hosts()
+		tmpHostList = get_hosts()
 		hostList = list()
 		for host in tmpHostList:
 			if host.hoststatus == "up":
@@ -333,25 +295,28 @@ class SecIntWeb:
 		
 		hostCounter = 0
 		for host in hostList:
-			pageText = pageText + "host" + str(hostCounter) + " = myPanel.createRectangle();"
+			pageText = pageText + "var host" + str(hostCounter) + " = myPanel.createRectangle();"
 			pageText = pageText + "host" + str(hostCounter) + ".setWidth(" + str(hostWidth - 5) + ");"
 			pageText = pageText + "host" + str(hostCounter) + ".setHeight(25);"
 			pageText = pageText + "host" + str(hostCounter) + ".setX(" + str(hostWidth * hostCounter) + ");"
 			pageText = pageText + "host" + str(hostCounter) + ".setY(0);" 
 			pageText = pageText + "myPanel.addElement(host" + str(hostCounter) + ");"
+                        pageText = pageText + "myPanel.addClickListener(function(eventArgs) {"
+                        pageText = pageText + "host" + str(hostCounter) + ".setCenterX(eventArgs.getX());"
+                        pageText = pageText + "});"
+
 			#pageText = pageText + host.outputall() 
 			hostCounter = hostCounter + 1
+		pageText = pageText + "myPanel.setCursor(jsgl.Cursor.E_RESIZE);"
 		pageText = pageText + "</script>"		
 
 		if not args:
 				
-			pageText = pageText + "Latest Service Data <br>:"
-			
-			pageText = pageText + get_services('')
-
+			pageText = pageText + "No Args"
+		
 		else:
 			if 'd' in args:
-				pageText = pageText + "YES"
+				pageText = pageText + "d Arg"
 
 		pageText = pageText + '</body></html>'	
 		return pageText
@@ -383,9 +348,7 @@ def start_web_interface( filter ):
 
 		cherrypy.server.socket_port = portnum
 		cherrypy.server.socket_host = '0.0.0.0'
-		
 		#cherrypy.config.update({ "environment": "embedded" })
-
 		cherrypy.quickstart(SecIntWeb())
 
 	else:
@@ -393,13 +356,72 @@ def start_web_interface( filter ):
 		
 
 
+
+
+
+def display_hosts( filter ):
+	if (filter):
+		filtertext = filter
+        else:
+		filtertext = ''
+		
+	if (args.debug):
+		print "Filtertext: " + filtertext
+	
+	if (args.outtable):
+		template = "{0:15}|{1:10}|{2:25}|{3:10}"	
+	
+	if (not args.notitle):
+		if (args.outtable):
+			print template.format("HostIP", "HostStatus", "HostName", "HostOS")
+		else:
+			print "HostIP\t\t\tHostStatus\t\t\tHostName\t\t\tHostOS"
+	
+	hostList = get_hosts()
+	
+	for host in hostList:
+		greptext = host.hostipaddr + "\t\t" + host.hoststatus + "\t\t\t" + host.hostname + "\t\t\t\t\t" + host.hostos
+		if filtertext in greptext:
+			if (args.outtable):
+				print template.format(host.hostipaddr, host.hoststatus, host.hostname, host.hostos)
+			else:
+				print host.hostipaddr + "\t\t" + host.hoststatus + "\t\t\t" + host.hostname + "\t\t\t\t\t" + host.hostos
+
+
+def display_services( filter ):
+	
+	template = "{0:15}|{1:25}|{2:8}|{3:8}|{4:8}|{5:15}|{6:45}|{7:35}"
+	if (not args.notitle):
+		if (args.outtable):
+			print template.format("HostIP", "HostName", "SvcID", "SvcProto", "SvcPort", "ServiceName", "ServiceProduct", "ServiceVersion")
+		else:
+			print 'HostIP\t\t\tHostName\tSvcID\tSvcProto\tSvcPort\tServiceName\tServiceProduct\tServiceVersion'
+
+	if (filter):
+		filterarg = filter
+	else:
+		filterarg = ''
+
+	serviceList = get_services()
+	
+	for service in serviceList:
+		greptext = service.hostipaddr + '\t\t' + service.hostname + '\t\t' + service.serviceid + '\t\t' + service.serviceproto + '\t\t' + service.serviceport + '\t\t' + service.servicename + '\t\t' + service.serviceproduct + '\t\t' + service.serviceversion
+		if filterarg in greptext:
+			if (args.outtable):
+				print template.format(service.hostipaddr, service.hostname, service.serviceid, service.serviceproto, service.serviceport, service.servicename, service.serviceproduct, service.serviceversion)
+			else:
+				print service.hostipaddr + '\t\t' + service.hostname + '\t\t' + service.serviceid + '\t\t' + service.serviceproto + '\t\t' + service.serviceport + '\t\t' + service.servicename + '\t\t' + service.serviceproduct + '\t\t' + service.serviceversion
+		
+
+
+
 if (args.services):
 
-	print get_services( args.filter )
+	display_services( args.filter )	
 
 elif (args.hosts):
-
-	get_hosts( args.filter )	
+	
+	display_hosts( args.filter )
 
 elif (args.scans):
 
