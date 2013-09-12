@@ -338,6 +338,9 @@ class SecIntWeb:
 		
 		hostCounter = 0
 		for host in hostList:
+
+			if host.hostname == "0":
+				host.hostname = "unknown"
 			
 			tmpServiceList = get_services(host.hostipaddr)
 				
@@ -352,13 +355,28 @@ class SecIntWeb:
 					"document.getElementById('hostservice').innerHTML = '"
 					"HostIP: " + host.hostipaddr + "<br>"
 					"HostName: " + host.hostname + "<br>"
-					"HostOS: " + host.hostos + "<br>"
+					"HostOS: " + host.hostos + "<br><br>"
 					"Services Detected: <br><br>"
-					"ServiceID ServiceProto ServicePort ServiceName SerivceProduct ServiceVersion <br>")
+					"<table border=\"1\">"
+					"<tr>"
+					"<td>ServicePort</td>"
+					"<td>ServiceProto</td>"
+					"<td>ServiceID</td>"
+					"<td>ServiceName</td>"
+					"<td>SerivceProduct</td>"
+					"<td>ServiceVersion</td>"
+					"</tr>")
 
 			for svc in tmpServiceList:
-				pageText = pageText + (svc.serviceid + " " + svc.serviceproto + " " + svc.serviceport + " " + svc.servicename + " " + svc.serviceproduct + " " + svc.serviceversion + "<br>")				
-					
+				pageText = pageText + ("<tr><td>" + svc.serviceport + "</td>"
+						"<td>" + svc.serviceproto + "</td>"
+						"<td>" + svc.serviceid + "</td>"
+						"<td>" + svc.servicename + "</td>"
+						"<td>" + svc.serviceproduct + "</td>"
+						"<td>" + svc.serviceversion + "</td>"
+						"</tr>")
+			
+			pageText = pageText + "</table>"		
 			pageText = pageText + ("';"
 					"};"
 					"var lerp" + str(hostCounter) + " = function() {"
