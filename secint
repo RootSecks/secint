@@ -239,11 +239,17 @@ def get_hosts():
 def get_vulns():
 	vuln = mysql.connect(dbhost, dbuser, dbpass, dbname)
 	
-def get_services():
+def get_services( hostIP ):
 	scanid = get_latest_scan_id()
 	derp = _mysql.connect(dbhost, dbuser, dbpass, dbname)
 	hostcon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
-	hostcon.query("SELECT * FROM NmapHosts WHERE ParentScan=" + scanid)
+	
+	if (hostIP != None):
+		tmpQuery = "SELECT * FROM NmapHosts WHERE ParentScan=" + scanid + " AND HostIP=\"" + hostIP + "\""
+	else:
+		tmpQuery = "SELECT * FROM NmapHosts WHERE ParentScan=" + scanid
+	
+	hostcon.query(tmpQuery)
 	hostquery = hostcon.use_result()
 	serviceList = list()
 	while True:
@@ -316,7 +322,7 @@ class SecIntWeb:
 			"<script type=\"text/javascript\" src=\"./jsgl.js\"></script>"
 			"</head>"
 			"<body>"
-			"<div id=\"panel\" style=\"width: 1024px; height: 480px\"></div>"
+			"<div id=\"panel\" style=\"width: 1024px; height: 50px\"></div>"
 			"<script type=\"text/javascript\">"
 			"myPanel = new jsgl.Panel(document.getElementById(\"panel\"));")
 		
@@ -332,6 +338,9 @@ class SecIntWeb:
 		
 		hostCounter = 0
 		for host in hostList:
+			
+			tmpServiceList = get_services(host.hostipaddr)
+				
 			pageText = pageText + ("var host" + str(hostCounter) + " = myPanel.createRectangle();"
 					"host" + str(hostCounter) + ".setWidth(" + str(hostWidth - 5) + ");"
 					"host" + str(hostCounter) + ".setHeight(25);"
@@ -340,7 +349,17 @@ class SecIntWeb:
 					"host" + str(hostCounter) + ".getFill().setColor('rgb(255,0,0)');"
 					"myPanel.addElement(host" + str(hostCounter) + ");"
 					"var derp" + str(hostCounter) + " = function() {"
-					"document.getElementById('hostservice').innerHTML = '" + host.outputall() + "';"
+					"document.getElementById('hostservice').innerHTML = '"
+					"HostIP: " + host.hostipaddr + "<br>"
+					"HostName: " + host.hostname + "<br>"
+					"HostOS: " + host.hostos + "<br>"
+					"Services Detected: <br><br>"
+					"ServiceID ServiceProto ServicePort ServiceName SerivceProduct ServiceVersion <br>")
+
+			for svc in tmpServiceList:
+				pageText = pageText + (svc.serviceid + " " + svc.serviceproto + " " + svc.serviceport + " " + svc.servicename + " " + svc.serviceproduct + " " + svc.serviceversion + "<br>")				
+					
+			pageText = pageText + ("';"
 					"};"
 					"var lerp" + str(hostCounter) + " = function() {"
 					"document.getElementById('hostservice').innerHTML = ' ';"
@@ -436,7 +455,7 @@ def display_services( filter ):
 	else:
 		filterarg = ''
 
-	serviceList = get_services()
+	serviceList = get_services(None)
 	
 	for service in serviceList:
 		greptext = service.hostipaddr + '\t\t' + service.hostname + '\t\t' + service.serviceid + '\t\t' + service.serviceproto + '\t\t' + service.serviceport + '\t\t' + service.servicename + '\t\t' + service.serviceproduct + '\t\t' + service.serviceversion
