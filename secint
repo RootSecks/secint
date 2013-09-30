@@ -33,6 +33,7 @@ mutgroup.add_argument('-aC', '--addcredential', help='Add credentials', action='
 mutgroup.add_argument('-cV', '--createvector', help='Add vector', action='store_true')
 mutgroup.add_argument('-cVu', '--createvuln', help='Add vulnerability', action='store_true')
 mutgroup.add_argument('-sN', '--scannmap', metavar='NMAPOPTIONS', help='Run nmap scan')
+mutgroup.add_argument('-dS', '--deletescan', metavar="SCANID", help='Delete a scan', type=int)
 
 #Modifiers
 parser.add_argument('-nT', '--notitle', help='Surpresses column titles to make output suitable for scripts', action='store_true')
@@ -40,6 +41,10 @@ parser.add_argument('-oT', '--outtable', help='Output as pretty table', action='
 parser.add_argument('-sS', '--selectscan', help='Return objects from a specific scan', type=int)
 parser.add_argument('-d', '--debug', help="Enable debug messages", action="store_true")
 parser.add_argument('-wP', '--webport', help="Define an optional port for the web interface (Default 9191)", type=int)
+parser.add_argument('-s', '--serviceid', help="Define the ID of a service for a vuln or vector", type=int)
+parser.add_argument('-r', '--reference', help="Define a reference for a vuln or vector (ie a public exploit)")
+parser.add_argument('-de', '--description', help="Define a description for a vector or vuln")
+parser.add_argument('-R', '--risk', help="Define a risk for a vuln", type=int)
 
 #Positionals
 parser.add_argument('filter', type=str, nargs='?', help='Filters output lists')
@@ -505,6 +510,32 @@ def display_vectors( filter ):
 			else:
 				print vector.vectorid + '\t\t' + vector.hostipaddr + '\t\t' + vector.serviceport + '\t\t' + vector.serviceproduct + '\t\t' + vector.serviceversion + '\t\t' + vector.vectorref
 
+
+
+def multi_line_input(helloString, stringDelim):
+	print helloString
+	if stringDelim != None:
+		for line in iter(raw_input, stringDelim):
+			print line
+			pass
+	
+
+def create_vuln(vulnSvcId, vulnRef, vulnDesc, vulnRisk):
+	print "Not implemenetd"	
+
+
+
+def delete_scan( scanid ):
+	delcon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+	delquery = "DELETE FROM NmapServices WHERE ParentHost IN ( SELECT HostID FROM NmapHosts WHERE ParentScan=" + str(scanid) + ")"
+	delcon.query( delquery )
+	delquery = "DELETE FROM NmapHosts WHERE ParentScan=" + str(scanid)
+	delcon.query( delquery )
+	delquery = "DELETE FROM SecintScans WHERE ScanID=" + str(scanid)
+	delcon.query( delquery )
+		
+
+
 		
 if (args.services):
 	
@@ -541,6 +572,35 @@ elif (args.credentials):
 elif (args.webinterface):
 
 	start_web_interface( filter )
+
+elif( args.deletescan != None):
+
+	delete_scan( args.deletescan )	
+
+elif (args.createvuln):
+
+	if (args.serviceid != None):
+		vulnSvcId = args.serviceid
+	else:
+		vulnSvcId = raw_input('Enter a service id for this vuln: ')		
+
+	if (args.reference != None):
+		vulnRef = args.reference
+	else:
+		vulnRef = raw_input('Enter a reference for this vuln: ')
+
+	if (args.description != None):
+		vulnDesc = args.description
+	else:
+		multi_line_input('Enter breif description. End with !: ', '!')
+		
+	if (args.risk != None):
+		vulnRisk = args.risk
+	else:
+		vulnRisk = raw_input('Enter a risk level for this vuln: ')
+		
+	
+	create_vuln(vulnSvcId, vulnRef, vulnDesc, vulnRisk)
 
 else:
 	
