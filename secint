@@ -34,6 +34,7 @@ mutgroup.add_argument('-cV', '--createvector', help='Add vector', action='store_
 mutgroup.add_argument('-cVu', '--createvuln', help='Add vulnerability', action='store_true')
 mutgroup.add_argument('-sN', '--scannmap', metavar='NMAPOPTIONS', help='Run nmap scan')
 mutgroup.add_argument('-dS', '--deletescan', metavar="SCANID", help='Delete a scan', type=int)
+mutgroup.add_argument('-aN', '--addnetwork', help="Add a secint network object", action='store_true')
 
 #Modifiers
 parser.add_argument('-nT', '--notitle', help='Surpresses column titles to make output suitable for scripts', action='store_true')
@@ -43,8 +44,13 @@ parser.add_argument('-d', '--debug', help="Enable debug messages", action="store
 parser.add_argument('-wP', '--webport', help="Define an optional port for the web interface (Default 9191)", type=int)
 parser.add_argument('-s', '--serviceid', help="Define the ID of a service for a vuln or vector", type=int)
 parser.add_argument('-r', '--reference', help="Define a reference for a vuln or vector (ie a public exploit)")
-parser.add_argument('-de', '--description', help="Define a description for a vector or vuln")
+parser.add_argument('-de', '--description', help="Define a description for the object being added")
 parser.add_argument('-R', '--risk', help="Define a risk for a vuln", type=int)
+parser.add_argument('-hi', '--hostid', help="Define the ID of a host", type=int)
+parser.add_argument('-c', '--cidr', help="Define a Network CIDR (ip/prefix)")
+parser.add_argument('-n', '--name', help="Define a name for the object being added")
+parser.add_argument('-ip', '--ipaddress', help="Define an IP for the object being added")
+parser.add_argument('-ni', '--networkid', help="Define a Network ID for the object being added")
 
 #Positionals
 parser.add_argument('filter', type=str, nargs='?', help='Filters output lists')
@@ -514,14 +520,78 @@ def display_vectors( filter ):
 
 def multi_line_input(helloString, stringDelim):
 	print helloString
+	stringBuf = ""
 	if stringDelim != None:
 		for line in iter(raw_input, stringDelim):
-			print line
+			stringBuf = stringBuf + line
 			pass
-	
+	return stringBuf
 
 def create_vuln(vulnSvcId, vulnRef, vulnDesc, vulnRisk):
 	print "Not implemenetd"	
+
+
+
+def add_host():
+	if (args.name != None):
+		hstname = args.name
+	else:
+		hstname = raw_input('Enter a hostname: ')
+	if (args.ipaddress != None):
+		hstip = args.ipaddress
+	else:
+		hstip = raw_input('Enter an IP Address: ')
+	if (args.networkid != None):
+		hstnid = args.networkid
+	else: 
+		hstnid = raw_input('Enter a network ID: ')
+	if ( args.description != None):
+                hstdesc = args.description
+        else:
+                hstdesc = multi_line_input('Enter breif description. End with !: ', '!')
+
+	print "Adding host with the following values: "
+	print "Host Name: " + hstname
+	print "Host IP: " + hstip
+	print "Host Network ID: " + hstnid
+	print "Host Description: " + hstdesc
+
+	addhostcon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+	addhostquery = "INSERT INTO SecintHosts (HostName, HostIP, HostNetwork, HostDescription) VALUES (\"" + hstname + "\", \"" + hstip + "\", " + hstid + ", \"" + hstdesc + "\")"
+	addhostcon.query(addhostquery)
+		
+
+
+def parse_cidr(networkcidr):
+	cidrarray = networkcidr.split("/")
+	return cidrarray[0], cidrarray[1]
+
+def add_network():
+	if (args.name != None):
+		networkname = args.name
+	else:
+		networkname = raw_input('Enter a name for this network: ')
+	if (args.cidr != None):
+		networkip, networkprefix = parse_cidr(args.cidr)
+	else:
+		tmpcidr = raw_input('Enter the CIDR for this network in the ipaddress/prefix format: ')
+		networkip, networkprefix = parse_cidr(tmpcidr)
+	if ( args.description != None):
+		networkdesc = args.description
+	else:
+		networkdesc = multi_line_input('Enter breif description. End with !: ', '!')
+	
+	print "Adding network with the following values: "
+	print "Network Name: " + networkname
+        print "Network IP: " + networkip
+        print "Network Prefix: " + networkprefix
+	print "Network Description: " + networkdesc
+
+	addnetcon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+	addnetquery = "INSERT INTO SecintNetworks (NetworkName, NetworkIP, NetworkPrefix, NetworkDescription) VALUES (\"" + networkname + "\", \"" + networkip + "\", \"" + networkprefix + "\",\"" + networkdesc + "\")"
+	addnetcon.query(addnetquery)	
+	
+	
 
 
 
@@ -577,6 +647,10 @@ elif( args.deletescan != None):
 
 	delete_scan( args.deletescan )	
 
+elif( args.addnetwork ):
+
+	add_network()
+
 elif (args.createvuln):
 
 	if (args.serviceid != None):
@@ -592,7 +666,7 @@ elif (args.createvuln):
 	if (args.description != None):
 		vulnDesc = args.description
 	else:
-		multi_line_input('Enter breif description. End with !: ', '!')
+		vulnDesc = multi_line_input('Enter breif description. End with !: ', '!')
 		
 	if (args.risk != None):
 		vulnRisk = args.risk
