@@ -18,12 +18,25 @@ except ImportError:
 	cherryFound = False
 
 
+class ansicolors:
+	GREEN = '\033[92m'
+	BLUE = '\033[94m'
+	YELLOW = '\033[93m'
+	RED = '\033[91m'
+	PINK = '\033[95m'
+	ENDC = '\033[0m'
+
+
+
+	
+
+
 parser = argparse.ArgumentParser(description="Security Intellegence Framework")
 mutgroup = parser.add_mutually_exclusive_group(required=True)
 #Primary Optional Arguments
-mutgroup.add_argument('-lS', '--services', help='List services', action='store_true')
+mutgroup.add_argument('-lSs', '--scanservices', help='List scanned services', action='store_true')
 mutgroup.add_argument('-lSc', '--scans', help='List scans', action='store_true')
-mutgroup.add_argument('-lH', '--hosts', help='List hosts', action='store_true')
+mutgroup.add_argument('-lSh', '--scanhosts', help='List scanned hosts', action='store_true')
 mutgroup.add_argument('-lC', '--credentials', help='List credentials and hashes', action='store_true')
 mutgroup.add_argument('-lV', '--listVulns', help='List vulnerabilities', action='store_true')
 mutgroup.add_argument('-lVe', '--vectors', help='List vectors', action='store_true')
@@ -35,6 +48,9 @@ mutgroup.add_argument('-cVu', '--createvuln', help='Add vulnerability', action='
 mutgroup.add_argument('-sN', '--scannmap', metavar='NMAPOPTIONS', help='Run nmap scan')
 mutgroup.add_argument('-dS', '--deletescan', metavar="SCANID", help='Delete a scan', type=int)
 mutgroup.add_argument('-aN', '--addnetwork', help="Add a secint network object", action='store_true')
+mutgroup.add_argument('-aH', '--addhost', help="Add a secint host object", action='store_true')
+mutgroup.add_argument('-lS', '--listservices', help="List services", action='store_true')
+mutgroup.add_argument('-lH', '--listhosts', help="List Hosts", action='store_true')
 
 #Modifiers
 parser.add_argument('-nT', '--notitle', help='Surpresses column titles to make output suitable for scripts', action='store_true')
@@ -45,12 +61,17 @@ parser.add_argument('-wP', '--webport', help="Define an optional port for the we
 parser.add_argument('-s', '--serviceid', help="Define the ID of a service for a vuln or vector", type=int)
 parser.add_argument('-r', '--reference', help="Define a reference for a vuln or vector (ie a public exploit)")
 parser.add_argument('-de', '--description', help="Define a description for the object being added")
-parser.add_argument('-R', '--risk', help="Define a risk for a vuln", type=int)
+parser.add_argument('-ri', '--risk', help="Define a risk for a vuln", type=int)
 parser.add_argument('-hi', '--hostid', help="Define the ID of a host", type=int)
 parser.add_argument('-c', '--cidr', help="Define a Network CIDR (ip/prefix)")
 parser.add_argument('-n', '--name', help="Define a name for the object being added")
 parser.add_argument('-ip', '--ipaddress', help="Define an IP for the object being added")
 parser.add_argument('-ni', '--networkid', help="Define a Network ID for the object being added")
+parser.add_argument('-S', '--status', help="Define a status for an object")
+parser.add_argument('-R', '--root', help="Define a root for an object")
+parser.add_argument('-P', '--pwned', help="Define a pwnned for an object")
+parser.add_argument('-O', '--OS', help="Define an OS for an object")
+
 
 #Positionals
 parser.add_argument('filter', type=str, nargs='?', help='Filters output lists')
@@ -228,7 +249,7 @@ class vector(service):
 	def outputall( self ):
 		return self.hostipaddr + self.hoststatus + self.hostname + self.hostos + self.serviceid + self.serviceproto + self.serviceport + self.servicename + self.servicename + self.serviceproduct + self.serviceversion + self.vectorif + self.vectorref
 
-def get_hosts():
+def get_scan_hosts():
 
         scanid = get_latest_scan_id()
         derp = _mysql.connect(dbhost, dbuser, dbpass, dbname)
@@ -247,10 +268,34 @@ def get_hosts():
 		hostList.append(tmpHost)
 	return hostList
 
+
+def get_hosts():
+
+        derp = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+        derp.query("SELECT * FROM SecintHosts")
+        hostrow = derp.use_result()
+        hostList = list()
+        while True:
+                row = hostrow.fetch_row()
+                if not row:
+                        break
+                tmpHost = host()
+		tmpHost.hostid = row[0][0]
+		tmpHost.hostname = row[0][1]
+                tmpHost.hostipaddr = row[0][4]
+		tmpHost.hostos = row[0][5]
+                tmpHost.hoststatus = row[0][8]
+                tmpHost.hostpwned = row[0][6]
+                tmpHost.hostroot = row[0][7]
+                hostList.append(tmpHost)
+        return hostList
+
+
+
 def get_vulns():
 	vuln = mysql.connect(dbhost, dbuser, dbpass, dbname)
 	
-def get_services( hostIP ):
+def get_scan_services( hostIP ):
 	scanid = get_latest_scan_id()
 	derp = _mysql.connect(dbhost, dbuser, dbpass, dbname)
 	hostcon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
@@ -338,7 +383,7 @@ class SecIntWeb:
 			"myPanel = new jsgl.Panel(document.getElementById(\"panel\"));")
 		
 		
-		tmpHostList = get_hosts()
+		tmpHostList = get_scan_hosts()
 		hostList = list()
 		for host in tmpHostList:
 			if host.hoststatus == "up":
@@ -353,7 +398,7 @@ class SecIntWeb:
 			if host.hostname == "0":
 				host.hostname = "unknown"
 			
-			tmpServiceList = get_services(host.hostipaddr)
+			tmpServiceList = get_scan_services(host.hostipaddr)
 				
 			pageText = pageText + ("var host" + str(hostCounter) + " = myPanel.createRectangle();"
 					"host" + str(hostCounter) + ".setWidth(" + str(hostWidth - 5) + ");"
@@ -442,7 +487,7 @@ def start_web_interface( filter ):
 	else:
 		print "CherryPy Not Found :( "
 		
-def display_hosts( filter ):
+def display_scan_hosts( filter ):
 	if (filter):
 		filtertext = filter
         else:
@@ -460,7 +505,7 @@ def display_hosts( filter ):
 		else:
 			print "HostIP\t\t\tHostStatus\t\t\tHostName\t\t\tHostOS"
 	
-	hostList = get_hosts()
+	hostList = get_scan_hosts()
 	
 	for host in hostList:
 		greptext = host.hostipaddr + "\t\t" + host.hoststatus + "\t\t\t" + host.hostname + "\t\t\t\t\t" + host.hostos
@@ -470,8 +515,7 @@ def display_hosts( filter ):
 			else:
 				print host.hostipaddr + "\t\t" + host.hoststatus + "\t\t\t" + host.hostname + "\t\t\t\t\t" + host.hostos
 
-def display_services( filter ):
-	
+def display_scan_services( filter ):	
 	template = "{0:15}|{1:25}|{2:8}|{3:8}|{4:8}|{5:15}|{6:45}|{7:35}"
 	if (not args.notitle):
 		if (args.outtable):
@@ -484,7 +528,7 @@ def display_services( filter ):
 	else:
 		filterarg = ''
 
-	serviceList = get_services(None)
+	serviceList = get_scan_services(None)
 	
 	for service in serviceList:
 		greptext = service.hostipaddr + '\t\t' + service.hostname + '\t\t' + service.serviceid + '\t\t' + service.serviceproto + '\t\t' + service.serviceport + '\t\t' + service.servicename + '\t\t' + service.serviceproduct + '\t\t' + service.serviceversion
@@ -546,9 +590,25 @@ def add_host():
 	else: 
 		hstnid = raw_input('Enter a network ID: ')
 	if ( args.description != None):
-                hstdesc = args.description
-        else:
-                hstdesc = multi_line_input('Enter breif description. End with !: ', '!')
+		hstdesc = args.description
+	else:
+		hstdesc = multi_line_input('Enter breif description. End with !: ', '!')
+	if (args.status != None):
+		hststatus = args.status
+	else:
+		hststatus = raw_input('Enter a status: ')
+	if (args.root != None):
+		hstroot = args.root
+	else:
+		hstroot = raw_input('Enter a root: ')
+	if ( args.pwned != None ):
+		hstpwned = args.pwned
+	else:
+		hstpwned = raw_input('Enter a pwnd: ')
+	if (args.OS != None):
+		hstos = args.OS
+	else:
+		hstos = raw_input('Enter an os: ')
 
 	print "Adding host with the following values: "
 	print "Host Name: " + hstname
@@ -557,7 +617,7 @@ def add_host():
 	print "Host Description: " + hstdesc
 
 	addhostcon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
-	addhostquery = "INSERT INTO SecintHosts (HostName, HostIP, HostNetwork, HostDescription) VALUES (\"" + hstname + "\", \"" + hstip + "\", " + hstid + ", \"" + hstdesc + "\")"
+	addhostquery = "INSERT INTO SecintHosts (HostName, HostIP, HostNetwork, HostDescription, HostOS, HostStatus, HostPwned, HostRoot) VALUES (\"" + hstname + "\", \"" + hstip + "\", " + hstid + ", \"" + hstdesc + "\")"
 	addhostcon.query(addhostquery)
 		
 
@@ -583,16 +643,13 @@ def add_network():
 	
 	print "Adding network with the following values: "
 	print "Network Name: " + networkname
-        print "Network IP: " + networkip
-        print "Network Prefix: " + networkprefix
+	print "Network IP: " + networkip
+	print "Network Prefix: " + networkprefix
 	print "Network Description: " + networkdesc
 
 	addnetcon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
 	addnetquery = "INSERT INTO SecintNetworks (NetworkName, NetworkIP, NetworkPrefix, NetworkDescription) VALUES (\"" + networkname + "\", \"" + networkip + "\", \"" + networkprefix + "\",\"" + networkdesc + "\")"
 	addnetcon.query(addnetquery)	
-	
-	
-
 
 
 def delete_scan( scanid ):
@@ -603,17 +660,64 @@ def delete_scan( scanid ):
 	delcon.query( delquery )
 	delquery = "DELETE FROM SecintScans WHERE ScanID=" + str(scanid)
 	delcon.query( delquery )
-		
 
 
-		
-if (args.services):
-	
-	display_services( args.filter )	
 
-elif (args.hosts):
-	
-	display_hosts( args.filter )
+
+def display_hosts():
+	if (args.filter):
+		filtertext = args.filter
+	else:
+                filtertext = ''
+
+        if (args.debug):
+                print "Filtertext: " + filtertext
+
+        if (args.outtable):
+                template = "{0:3}|{1:15}|{2:25}|{3:10}|{4:3}|{5:3}|{6:3}"
+
+        if (not args.notitle):
+                if (args.outtable):
+                        print template.format("ID", "Name", "IP", "OS", "Status", "Pwned", "Root")
+                else:
+                        print "HostID\tHost\tNameHostIP\tHostOS\t\tHostStatus\tHostPwned\tHostRoot"
+
+        hostList = get_hosts()
+
+        for host in hostList:
+                greptext = host.hostid + "\t\t" + host.hostname + "\t" + host.hostipaddr + "\t\t" + host.hostos + "\t" + host.hoststatus + "\t\t" + host.hostpwned + "\t\t" + host.hostroot
+                if filtertext in greptext:
+			if (host.hoststatus == "1"):
+				host.hoststatus = ansicolors.GREEN +  "[+]" + ansicolors.ENDC
+			else:
+				host.hoststatus = ansicolors.RED + "[-]" + ansicolors.ENDC
+			if (host.hostroot == "1"):
+				host.hostroot = ansicolors.GREEN +  "[+]" + ansicolors.ENDC
+			else:
+				host.hostroot = ansicolors.RED + "[-]" + ansicolors.ENDC
+			if (host.hostpwned == "1"):
+				host.hostpwned = ansicolors.GREEN +  "[+]" + ansicolors.ENDC
+			else:
+				host.hostpwned = ansicolors.RED + "[-]" + ansicolors.ENDC
+
+                        if (args.outtable):
+                                print template.format(host.hostid, host.hostname, host.hostipaddr, host.hoststatus, host.hostpwned, host.hostroot)
+                        else:
+				print host.hostid + "\t" + host.hostname + "\t" + host.hostipaddr + "\t" + host.hostos + "\t" + host.hoststatus + "\t\t" + host.hostpwned + "\t\t" + host.hostroot
+
+
+
+if (args.scanservices):
+
+	display_scan_services( args.filter )	
+
+elif (args.scanhosts):
+
+	display_scan_hosts( args.filter )
+
+elif (args.listhosts):
+
+	display_hosts()
 
 elif (args.scans):
 
@@ -651,6 +755,10 @@ elif( args.addnetwork ):
 
 	add_network()
 
+elif( args.addhost ):
+	
+	add_host()
+
 elif (args.createvuln):
 
 	if (args.serviceid != None):
@@ -678,4 +786,5 @@ elif (args.createvuln):
 
 else:
 	
-	print 'not implemened: ' + APP_PATH
+
+	print "Not implemented"	
