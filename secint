@@ -28,7 +28,7 @@ class ansicolors:
 
 
 
-	
+
 
 
 parser = argparse.ArgumentParser(description="Security Intellegence Framework")
@@ -107,6 +107,130 @@ for line in f:
                 if (args.debug):
                         print "Database host found, putting: " + linearr[1] + " into dbhost variable"
 
+
+
+def start_web_interface( filter ):
+
+        if (cherryFound):
+
+                print "CherryPy Found, starting web server"
+
+                import cherrypy
+
+                if args.webport > 0:
+                        portnum = args.webport
+                else:
+                        portnum = 9191
+
+                if (args.debug):
+                        print portnum
+
+                cherrypy.server.socket_port = portnum
+                cherrypy.server.socket_host = '0.0.0.0'
+                #cherrypy.config.update({ "environment": "embedded" })
+                cherrypy.quickstart(SecIntWeb())
+
+        else:
+                print "CherryPy Not Found :( "
+
+
+
+class SecIntWeb:
+
+	def index(self, **args):
+		
+		pageText = ("<html><head>"		
+			"<script type=\"text/javascript\" src=\"./jsgl.js\"></script>"
+			"</head>"
+			"<body>"
+			"<div id=\"panel\" style=\"width: 1024px; height: 50px\"></div>"
+			"<script type=\"text/javascript\">"
+			"myPanel = new jsgl.Panel(document.getElementById(\"panel\"));")
+		
+		
+		tmpHostList = get_scan_hosts()
+		hostList = list()
+		for host in tmpHostList:
+			if host.hoststatus == "up":
+				hostList.append(host)
+
+		hostNum = len(hostList)
+		hostWidth = 1024/hostNum
+		
+		hostCounter = 0
+		for host in hostList:
+
+			if host.hostname == "0":
+				host.hostname = "unknown"
+			
+			tmpServiceList = get_scan_services(host.hostipaddr)
+				
+			pageText = pageText + ("var host" + str(hostCounter) + " = myPanel.createRectangle();"
+					"host" + str(hostCounter) + ".setWidth(" + str(hostWidth - 5) + ");"
+					"host" + str(hostCounter) + ".setHeight(25);"
+					"host" + str(hostCounter) + ".setX(" + str(hostWidth * hostCounter) + ");"
+					"host" + str(hostCounter) + ".setY(0);"
+					"host" + str(hostCounter) + ".getFill().setColor('rgb(255,0,0)');"
+					"myPanel.addElement(host" + str(hostCounter) + ");"
+					"var derp" + str(hostCounter) + " = function() {"
+					"document.getElementById('hostservice').innerHTML = '"
+					"HostIP: " + host.hostipaddr + "<br>"
+					"HostName: " + host.hostname + "<br>"
+					"HostOS: " + host.hostos + "<br><br>"
+					"Services Detected: <br><br>"
+					"<table border=\"1\">"
+					"<tr>"
+					"<td>ServicePort</td>"
+					"<td>ServiceProto</td>"
+					"<td>ServiceID</td>"
+					"<td>ServiceName</td>"
+					"<td>SerivceProduct</td>"
+					"<td>ServiceVersion</td>"
+					"</tr>")
+
+			for svc in tmpServiceList:
+				pageText = pageText + ("<tr><td>" + svc.serviceport + "</td>"
+						"<td>" + svc.serviceproto + "</td>"
+						"<td>" + svc.serviceid + "</td>"
+						"<td>" + svc.servicename + "</td>"
+						"<td>" + svc.serviceproduct + "</td>"
+						"<td>" + svc.serviceversion + "</td>"
+						"</tr>")
+			
+			pageText = pageText + "</table>"		
+			pageText = pageText + ("';"
+					"};"
+					"var lerp" + str(hostCounter) + " = function() {"
+					"document.getElementById('hostservice').innerHTML = ' ';"
+					"};"
+					"host" + str(hostCounter) + ".addMouseOverListener(derp" + str(hostCounter) + ");"
+					"host" + str(hostCounter) + ".addMouseOutListener(lerp" + str(hostCounter) + ");")								
+			hostCounter = hostCounter + 1
+
+		pageText = pageText + "</script>"		
+		
+		pageText = pageText + "<div id=\"hostservice\"></div>"
+		
+		if not args:
+			print "LERP"
+		else:
+			if 'd' in args:
+				pageText = pageText + "d Arg"
+
+		pageText = pageText + '</body></html>'	
+		return pageText
+	
+	index.exposed = True
+
+	def jsgl_js( self ):
+		fileHandle = open('jsgl.js')
+		fileContents = fileHandle.read()
+		return fileContents
+	jsgl_js.exposed = True
+
+
+
+
 def get_latest_scan_id():
 	con = _mysql.connect(dbhost, dbuser, dbpass, dbname)
         con.query("SELECT * FROM SecintScans ORDER BY ScanTime DESC LIMIT 1")
@@ -125,59 +249,6 @@ def raw_query( query ):
                 if (not queryrow):
                 	break
 		print queryrow
-
-def create_vector( serviceid ):
-	querycon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
-	filter = filter.split("|")
-	cquery = "INSERT INTO Vectors (VectorServiceID, VectorReference) VALUES (" + filter[0] + ", \"" + filter[1] + "\")"
-        querycon.query( cquery )
-
-def list_vectors( filter ):
-	
-	if (filter):
-		filterarg = filter
-	else:
-		filterarg = ''
-
-	template = "{0:10}|{1:20}|{2:15}|{3:30}|{4:15}|{5:45}"
-	vquerycon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
-       	vquery = "SELECT * FROM Vectors"
-	vquerycon.query( vquery )
-        vquery = vquerycon.use_result()
-
-	if (not args.notitle):
-        	if (args.outtable):
-                	print template.format("VectorID", "HostIP", "ServicePort", "ServiceProduct", "ServiceVersion", "VectorReference")
-		else:
-			print 'VectorID\tHostIP\tServicePort\tServiceProduct\tServiceVersion\tVectorReference'
-
-        while True:
-                vqueryrow = vquery.fetch_row()
-                if (not vqueryrow):
-                        break
-                squerycon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
-		squery = "SELECT * FROM NmapServices WHERE ServiceID=" + vqueryrow[0][1]
-		squerycon.query( squery )
-		squery = squerycon.use_result()
-		while True:
-			squeryrow = squery.fetch_row()
-			if (not squeryrow):
-				break
-			hquerycon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
-			hquery = "SELECT * FROM NmapHosts WHERE HostID=" + squeryrow[0][4]
-			hquerycon.query( hquery )
-			hquery = hquerycon.use_result()
-			while True:
-				hqueryrow = hquery.fetch_row()
-				if (not hqueryrow):
-					break
-				greptext = vqueryrow[0][0] + '\t\t' + hqueryrow[0][1] + '\t\t' + squeryrow[0][2] + '\t\t' + squeryrow[0][6] + '\t\t' + squeryrow[0][7] + '\t\t' + vqueryrow[0][2]
-
-				if filterarg in greptext:
-					if (args.outtable):
-						print template.format(vqueryrow[0][0], hqueryrow[0][1], squeryrow[0][2], squeryrow[0][6], squeryrow[0][7], vqueryrow[0][2])
-					else:
-						print vqueryrow[0][0] + '\t\t' + hqueryrow[0][1] + '\t\t' + squeryrow[0][2] + '\t\t' + squeryrow[0][6] + '\t\t' + squeryrow[0][7] + '\t\t' + vqueryrow[0][2]
 
 def get_scans( filter ):
 
@@ -334,159 +405,7 @@ def get_scan_services( hostIP ):
 			serviceList.append(tmpService)	
 	return serviceList	
 
-def get_vectors():
-	vquerycon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
-	vquery = "SELECT * FROM Vectors"
-	vquerycon.query( vquery )
-	vquery = vquerycon.use_result()
-    	vectorList = list()
-	while True:
-		vqueryrow = vquery.fetch_row()
-		if not vqueryrow:
-			break
-		squerycon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
-		squery = "SELECT * FROM NmapServices WHERE ServiceID=" + vqueryrow[0][1]
-		squerycon.query( squery )
-		squery = squerycon.use_result()
-		while True:
-			squeryrow = squery.fetch_row()
-			if (not squeryrow):
-				break
-			hquerycon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
-			hquery = "SELECT * FROM NmapHosts WHERE HostID=" + squeryrow[0][4]
-			hquerycon.query( hquery )
-			hquery = hquerycon.use_result()
-			while True:
-				hqueryrow = hquery.fetch_row()
-				if (not hqueryrow):
-					break
-				tmpVector = vector()
-				tmpVector.vectorid = vqueryrow[0][0]
-				tmpVector.hostipaddr = hqueryrow[0][1]
-				tmpVector.serviceport = squeryrow[0][2]
-				tmpVector.serviceproduct = squeryrow[0][6]
-				tmpVector.serviceversion = squeryrow[0][7]
-				tmpVector.vectorref = vqueryrow[0][2]
-				vectorList.append(tmpVector)
-	return vectorList
 
-class SecIntWeb:
-
-	def index(self, **args):
-		
-		pageText = ("<html><head>"		
-			"<script type=\"text/javascript\" src=\"./jsgl.js\"></script>"
-			"</head>"
-			"<body>"
-			"<div id=\"panel\" style=\"width: 1024px; height: 50px\"></div>"
-			"<script type=\"text/javascript\">"
-			"myPanel = new jsgl.Panel(document.getElementById(\"panel\"));")
-		
-		
-		tmpHostList = get_scan_hosts()
-		hostList = list()
-		for host in tmpHostList:
-			if host.hoststatus == "up":
-				hostList.append(host)
-
-		hostNum = len(hostList)
-		hostWidth = 1024/hostNum
-		
-		hostCounter = 0
-		for host in hostList:
-
-			if host.hostname == "0":
-				host.hostname = "unknown"
-			
-			tmpServiceList = get_scan_services(host.hostipaddr)
-				
-			pageText = pageText + ("var host" + str(hostCounter) + " = myPanel.createRectangle();"
-					"host" + str(hostCounter) + ".setWidth(" + str(hostWidth - 5) + ");"
-					"host" + str(hostCounter) + ".setHeight(25);"
-					"host" + str(hostCounter) + ".setX(" + str(hostWidth * hostCounter) + ");"
-					"host" + str(hostCounter) + ".setY(0);"
-					"host" + str(hostCounter) + ".getFill().setColor('rgb(255,0,0)');"
-					"myPanel.addElement(host" + str(hostCounter) + ");"
-					"var derp" + str(hostCounter) + " = function() {"
-					"document.getElementById('hostservice').innerHTML = '"
-					"HostIP: " + host.hostipaddr + "<br>"
-					"HostName: " + host.hostname + "<br>"
-					"HostOS: " + host.hostos + "<br><br>"
-					"Services Detected: <br><br>"
-					"<table border=\"1\">"
-					"<tr>"
-					"<td>ServicePort</td>"
-					"<td>ServiceProto</td>"
-					"<td>ServiceID</td>"
-					"<td>ServiceName</td>"
-					"<td>SerivceProduct</td>"
-					"<td>ServiceVersion</td>"
-					"</tr>")
-
-			for svc in tmpServiceList:
-				pageText = pageText + ("<tr><td>" + svc.serviceport + "</td>"
-						"<td>" + svc.serviceproto + "</td>"
-						"<td>" + svc.serviceid + "</td>"
-						"<td>" + svc.servicename + "</td>"
-						"<td>" + svc.serviceproduct + "</td>"
-						"<td>" + svc.serviceversion + "</td>"
-						"</tr>")
-			
-			pageText = pageText + "</table>"		
-			pageText = pageText + ("';"
-					"};"
-					"var lerp" + str(hostCounter) + " = function() {"
-					"document.getElementById('hostservice').innerHTML = ' ';"
-					"};"
-					"host" + str(hostCounter) + ".addMouseOverListener(derp" + str(hostCounter) + ");"
-					"host" + str(hostCounter) + ".addMouseOutListener(lerp" + str(hostCounter) + ");")								
-			hostCounter = hostCounter + 1
-
-		pageText = pageText + "</script>"		
-		
-		pageText = pageText + "<div id=\"hostservice\"></div>"
-		
-		if not args:
-			print "LERP"
-		else:
-			if 'd' in args:
-				pageText = pageText + "d Arg"
-
-		pageText = pageText + '</body></html>'	
-		return pageText
-	
-	index.exposed = True
-
-	def jsgl_js( self ):
-		fileHandle = open('jsgl.js')
-		fileContents = fileHandle.read()
-		return fileContents
-	jsgl_js.exposed = True
-
-def start_web_interface( filter ):
-
-	if (cherryFound):
-
-		print "CherryPy Found, starting web server"	
-
-		import cherrypy
-
-		if args.webport > 0:
-			portnum = args.webport
-		else:
-			portnum = 9191
-
-		if (args.debug):
-			print portnum
-
-		cherrypy.server.socket_port = portnum
-		cherrypy.server.socket_host = '0.0.0.0'
-		#cherrypy.config.update({ "environment": "embedded" })
-		cherrypy.quickstart(SecIntWeb())
-
-	else:
-		print "CherryPy Not Found :( "
-		
 def display_scan_hosts( filter ):
 	if (filter):
 		filtertext = filter
@@ -537,28 +456,6 @@ def display_scan_services( filter ):
 				print template.format(service.hostipaddr, service.hostname, service.serviceid, service.serviceproto, service.serviceport, service.servicename, service.serviceproduct, service.serviceversion)
 			else:
 				print service.hostipaddr + '\t\t' + service.hostname + '\t\t' + service.serviceid + '\t\t' + service.serviceproto + '\t\t' + service.serviceport + '\t\t' + service.servicename + '\t\t' + service.serviceproduct + '\t\t' + service.serviceversion
-	
-def display_vectors( filter ):
-	if (filter):
-		filterarg = filter
-	else:
-		filterarg = ''
-	template = "{0:10}|{1:20}|{2:15}|{3:30}|{4:15}|{5:45}"
-	if (not args.notitle):
-        	if (args.outtable):
-                	print template.format("VectorID", "HostIP", "ServicePort", "ServiceProduct", "ServiceVersion", "VectorReference")
-		else:
-			print 'VectorID\tHostIP\tServicePort\tServiceProduct\tServiceVersion\tVectorReference'
-	
-	vectorList = get_vectors()
-	
-	for vector in vectorList:
-		greptext = vector.vectorid + '\t\t' + vector.hostipaddr + '\t\t' + vector.serviceport + '\t\t' + vector.serviceproduct + '\t\t' + vector.serviceversion + '\t\t' + vector.vectorref
-		if filterarg in greptext:
-			if (args.outtable):
-				print template.format(vector.vectorid, vector.hostipaddr, vector.serviceport, vector.serviceproduct, vector.serviceversion, vector.vectorref)
-			else:
-				print vector.vectorid + '\t\t' + vector.hostipaddr + '\t\t' + vector.serviceport + '\t\t' + vector.serviceproduct + '\t\t' + vector.serviceversion + '\t\t' + vector.vectorref
 
 
 
@@ -570,10 +467,6 @@ def multi_line_input(helloString, stringDelim):
 			stringBuf = stringBuf + line
 			pass
 	return stringBuf
-
-def create_vuln(vulnSvcId, vulnRef, vulnDesc, vulnRisk):
-	print "Not implemenetd"	
-
 
 
 def add_host():
@@ -617,7 +510,10 @@ def add_host():
 	print "Host Description: " + hstdesc
 
 	addhostcon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
-	addhostquery = "INSERT INTO SecintHosts (HostName, HostIP, HostNetwork, HostDescription, HostOS, HostStatus, HostPwned, HostRoot) VALUES (\"" + hstname + "\", \"" + hstip + "\", " + hstid + ", \"" + hstdesc + "\")"
+	addhostquery = ("INSERT INTO SecintHosts ("
+					"HostName, HostIP, HostNetwork, HostDescription, HostOS, HostStatus, HostPwned, HostRoot)"
+					"VALUES (\"" + hstname + "\", \"" + hstip + "\", \"" + hstnid + "\", \"" + hstdesc + "\", \"" + hstos + "\", \"" + hststatus + "\""
+					", \"" + hstpwned + "\", \"" + hstroot + "\")")
 	addhostcon.query(addhostquery)
 		
 
@@ -674,11 +570,11 @@ def display_hosts():
                 print "Filtertext: " + filtertext
 
         if (args.outtable):
-                template = "{0:3}|{1:15}|{2:25}|{3:10}|{4:3}|{5:3}|{6:3}"
+                template = "{0:3}|{1:12}|{2:14}|{3:10}|{4:3}|{5:3}|{6:3}"
 
         if (not args.notitle):
                 if (args.outtable):
-                        print template.format("ID", "Name", "IP", "OS", "Status", "Pwned", "Root")
+                        print template.format("ID", "Name", "IP", "OS", "STS", "PWN", "ROT")
                 else:
                         print "HostID\tHost\tNameHostIP\tHostOS\t\tHostStatus\tHostPwned\tHostRoot"
 
@@ -701,7 +597,7 @@ def display_hosts():
 				host.hostpwned = ansicolors.RED + "[-]" + ansicolors.ENDC
 
                         if (args.outtable):
-                                print template.format(host.hostid, host.hostname, host.hostipaddr, host.hoststatus, host.hostpwned, host.hostroot)
+                                print template.format(host.hostid, host.hostname, host.hostipaddr, host.hostos, host.hoststatus, host.hostpwned, host.hostroot)
                         else:
 				print host.hostid + "\t" + host.hostname + "\t" + host.hostipaddr + "\t" + host.hostos + "\t" + host.hoststatus + "\t\t" + host.hostpwned + "\t\t" + host.hostroot
 
