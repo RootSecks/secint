@@ -51,6 +51,10 @@ mutgroup.add_argument('-aN', '--addnetwork', help="Add a secint network object",
 mutgroup.add_argument('-aH', '--addhost', help="Add a secint host object", action='store_true')
 mutgroup.add_argument('-lS', '--listservices', help="List services", action='store_true')
 mutgroup.add_argument('-lH', '--listhosts', help="List Hosts", action='store_true')
+mutgroup.add_argument('-aVR', '--addvectorreference', help="Add a reference for a vector", action='store_true')
+mutgroup.add_argument('-avR', '--addvulnreference', help="Add a reference for a vuln", action='store_true')
+mutgroup.add_argument('-pH', '--promotehost', help="Promote a scanned host to a secint host", type=int)
+
 
 #Modifiers
 parser.add_argument('-nT', '--notitle', help='Surpresses column titles to make output suitable for scripts', action='store_true')
@@ -71,6 +75,9 @@ parser.add_argument('-S', '--status', help="Define a status for an object")
 parser.add_argument('-R', '--root', help="Define a root for an object")
 parser.add_argument('-P', '--pwned', help="Define a pwnned for an object")
 parser.add_argument('-O', '--OS', help="Define an OS for an object")
+parser.add_argument('-vI', '--vid', help="Vuln or Vector ID")
+parser.add_argument('-Re', '--remediation', help="Vuln Remediation")
+
 
 
 #Positionals
@@ -293,12 +300,13 @@ def scan_nmap( options ):
 
 class host():
 	def __init__(self):
+		self.hostid = None
 		self.hostipaddr = None
 		self.hoststatus = None
 		self.hostname = None
 		self.hostos = None
 	def outputall( self ):
-		return self.hostipaddr + self.hoststatus + self.hostname + self.hostos
+		return self.hostipaddr + self.hoststatus + self.hostname + self.hostos + self.hostid
 
 class service(host):
 	def __init__(self):
@@ -332,6 +340,7 @@ def get_scan_hosts():
 		if not row:
 			break
 		tmpHost = host()
+		tmpHost.hostid = row[0][0]
 		tmpHost.hostipaddr = row[0][1]
 		tmpHost.hoststatus = row[0][3]
 		tmpHost.hostname = row[0][4]
@@ -420,19 +429,19 @@ def display_scan_hosts( filter ):
 	
 	if (not args.notitle):
 		if (args.outtable):
-			print template.format("HostIP", "HostStatus", "HostName", "HostOS")
+			print template.format("HostID", "HostIP", "HostStatus", "HostName", "HostOS")
 		else:
-			print "HostIP\t\t\tHostStatus\t\t\tHostName\t\t\tHostOS"
+			print "HostID\t\tHostIP\t\t\tHostStatus\t\t\tHostName\t\t\tHostOS"
 	
 	hostList = get_scan_hosts()
 	
 	for host in hostList:
-		greptext = host.hostipaddr + "\t\t" + host.hoststatus + "\t\t\t" + host.hostname + "\t\t\t\t\t" + host.hostos
+		greptext = host.hostid + "\t" + host.hostipaddr + "\t\t" + host.hoststatus + "\t\t\t" + host.hostname + "\t\t\t\t\t" + host.hostos
 		if filtertext in greptext:
 			if (args.outtable):
-				print template.format(host.hostipaddr, host.hoststatus, host.hostname, host.hostos)
+				print template.format(host.hostid, host.hostipaddr, host.hoststatus, host.hostname, host.hostos)
 			else:
-				print host.hostipaddr + "\t\t" + host.hoststatus + "\t\t\t" + host.hostname + "\t\t\t\t\t" + host.hostos
+				print host.hostid + "\t" + host.hostipaddr + "\t\t" + host.hoststatus + "\t\t\t" + host.hostname + "\t\t\t\t\t" + host.hostos
 
 def display_scan_services( filter ):	
 	template = "{0:15}|{1:25}|{2:8}|{3:8}|{4:8}|{5:15}|{6:45}|{7:35}"
@@ -570,18 +579,18 @@ def display_hosts():
                 print "Filtertext: " + filtertext
 
         if (args.outtable):
-                template = "{0:3}|{1:12}|{2:14}|{3:10}|{4:3}|{5:3}|{6:3}"
+                template = "{0:3}|{1:23}|{2:15}|{3:3}|{4:3}|{5:3}|{6:15}"
 
         if (not args.notitle):
                 if (args.outtable):
-                        print template.format("ID", "Name", "IP", "OS", "STS", "PWN", "ROT")
+                        print template.format("ID", "Name", "IP",  "STS", "PWN", "ROT", "OS")
                 else:
-                        print "HostID\tHost\tNameHostIP\tHostOS\t\tHostStatus\tHostPwned\tHostRoot"
+                        print "HostID\tHost\tNameHostIP\tHostStatus\tHostPwned\tHostRoot\tHostOS"
 
         hostList = get_hosts()
 
         for host in hostList:
-                greptext = host.hostid + "\t\t" + host.hostname + "\t" + host.hostipaddr + "\t\t" + host.hostos + "\t" + host.hoststatus + "\t\t" + host.hostpwned + "\t\t" + host.hostroot
+                greptext = host.hostid + "\t\t" + host.hostname + "\t" + host.hostipaddr + "\t" + host.hoststatus + "\t\t" + host.hostpwned + "\t\t" + host.hostroot + "\t\t" + host.hostos
                 if filtertext in greptext:
 			if (host.hoststatus == "1"):
 				host.hoststatus = ansicolors.GREEN +  "[+]" + ansicolors.ENDC
@@ -597,9 +606,129 @@ def display_hosts():
 				host.hostpwned = ansicolors.RED + "[-]" + ansicolors.ENDC
 
                         if (args.outtable):
-                                print template.format(host.hostid, host.hostname, host.hostipaddr, host.hostos, host.hoststatus, host.hostpwned, host.hostroot)
+                                print template.format(host.hostid, host.hostname, host.hostipaddr, host.hoststatus, host.hostpwned, host.hostroot, host.hostos)
                         else:
-				print host.hostid + "\t" + host.hostname + "\t" + host.hostipaddr + "\t" + host.hostos + "\t" + host.hoststatus + "\t\t" + host.hostpwned + "\t\t" + host.hostroot
+				print host.hostid + "\t" + host.hostname + "\t" + host.hostipaddr + "\t" + host.hoststatus + "\t\t" + host.hostpwned + "\t\t" + host.hostroot + host.hostos + "\t"
+
+
+
+
+def add_vector():
+	if ( args.hostid != None):
+		hostid = args.hostid
+	else:
+		hostid = raw_input('Enter the ID of the host: ')
+	
+	if ( args.name != None ):
+		vname = args.name
+	else:
+		vname = raw_input('Enter a name for the vector: ')
+	
+	vecon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+	vecquery = "INSERT INTO SecintVectors ( VectorHostID ) VALUES ( " + hostid + " )"
+	vecon.query(vecquery)
+	
+	
+	
+def add_vuln():
+	
+	if (args.hostid != None):
+		vulnhostid = args.hostid
+	else:
+		vulnhostid = raw_input('Enter a host id for this vuln: ')		
+
+	if ( args.name != None):
+		vulnname = args.name
+	else:
+		vulnname = raw_input('Enter a name for this vuln: ')
+
+	if (args.description != None):
+		vulnDesc = args.description
+	else:
+		vulnDesc = multi_line_input('Enter breif description. End with !: ', '!')
+		
+	if (args.risk != None):
+		vulnRisk = args.risk
+	else:
+		vulnRisk = raw_input('Enter a risk level for this vuln: ')
+	
+	if ( args.remediation != None ):
+		vulnRem = args.remediation
+	else:
+		vulnRem = raw_input('Enter the remediation for this vuln: ')
+	
+	vulncon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+	vulnquery = ("INSERT INTO SecintVulns (VulnRisk, VulnName, VulnHostID, VulnDescription, VulnRemediation)"
+				" VALUES (\"" + vulnRisk + "\", \"" + vulnname + "\", \"" + vulnhostid + "\", \"" + vulnDesc + "\", \"" + vulnRem + "\")")
+	vulncon.query(vulnquery)
+	
+	
+def add_reference():
+	if (args.vid != None):
+		vid = args.vid
+	else:
+		if ( args.addvulnreference ):
+			vid = raw_input('Enter the vuln id: ')
+		else:
+			vid = raw_input('Enter the vector id: ')
+	
+	if ( args.reference != None ):
+		vref = args.reference
+	else:
+		vref = raw_input('Please enter the reference:' )
+	
+	refcon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+	
+	if ( args.addvulnreference ):
+		refquery = "INSERT INTO SecintVulnReferences ( ReferenceVulnID, ReferenceContent ) VALUES ( " + vid + ", \"" + vref + "\")"
+	else:
+		refquery = "INSERT INTO SecintVectorReferences ( ReferenceVectorID, ReferenceContent ) VALUES ( " + vid + ", \"" + vref + "\")"
+	
+	refcon.query(refquery)
+	
+
+
+def promote_host():
+	promcon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+	dathost = "SELECT * FROM NmapHosts WHERE HostID=" + str(args.promotehost)
+	promcon.query(dathost)
+	hostrow = promcon.use_result()
+	row = hostrow.fetch_row()
+	tmpHost = host()
+	tmpHost.hostid = row[0][0]
+	tmpHost.hostipaddr = row[0][1]
+	tmpHost.hoststatus = row[0][3]
+	tmpHost.hostname = row[0][4]
+	tmpHost.hostos = row[0][5]
+	
+	if (args.networkid != None):
+		hostnid = args.networkid
+	else:
+		hostnid = raw_input('Enter the network id:' )
+		
+	if (args.pwned != None):
+		hstpwned = args.pwned
+	else:
+		hstpwned = raw_input('Host pwned? (1/0): ')
+	
+	if (args.root != None):
+		hstroot = args.root
+	else:
+		hstroot = raw_input('Host rooted? (1/0): ')
+		
+	if (tmpHost.hoststatus == "up"):
+		tmpHost.hoststatus = "1"
+	else:
+		tmpHost.hoststatus = "0"
+		
+	
+	addhostcon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+	addhostquery = ("INSERT INTO SecintHosts ("
+					"HostName, HostIP, HostNetwork, HostDescription, HostOS, HostStatus, HostPwned, HostRoot)"
+					"VALUES (\"" + tmpHost.hostname + "\", \"" + tmpHost.hostipaddr + "\", \"" + hostnid + "\", \"\", \"" + tmpHost.hostos + "\", \"" + tmpHost.hoststatus + "\""
+					", \"" + hstpwned + "\", \"" + hstroot + "\")")
+	addhostcon.query(addhostquery)
+	
 
 
 
@@ -607,9 +736,21 @@ if (args.scanservices):
 
 	display_scan_services( args.filter )	
 
+elif (args.promotehost != None):
+	
+	promote_host()
+	
 elif (args.scanhosts):
 
 	display_scan_hosts( args.filter )
+
+elif ( args.addvectorreference ):
+
+	add_reference()
+
+elif ( args.addvulnreference ):
+	
+	add_reference()
 
 elif (args.listhosts):
 
@@ -625,7 +766,7 @@ elif (args.rawquery):
 
 elif (args.createvector):
 	
-	create_vector( args.filter )
+	add_vector( )
 
 elif (args.vectors):
 	
@@ -656,29 +797,8 @@ elif( args.addhost ):
 	add_host()
 
 elif (args.createvuln):
-
-	if (args.serviceid != None):
-		vulnSvcId = args.serviceid
-	else:
-		vulnSvcId = raw_input('Enter a service id for this vuln: ')		
-
-	if (args.reference != None):
-		vulnRef = args.reference
-	else:
-		vulnRef = raw_input('Enter a reference for this vuln: ')
-
-	if (args.description != None):
-		vulnDesc = args.description
-	else:
-		vulnDesc = multi_line_input('Enter breif description. End with !: ', '!')
-		
-	if (args.risk != None):
-		vulnRisk = args.risk
-	else:
-		vulnRisk = raw_input('Enter a risk level for this vuln: ')
-		
 	
-	create_vuln(vulnSvcId, vulnRef, vulnDesc, vulnRisk)
+	create_vuln()
 
 else:
 	
