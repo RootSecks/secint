@@ -54,6 +54,8 @@ mutgroup.add_argument('-lH', '--listhosts', help="List Hosts", action='store_tru
 mutgroup.add_argument('-aVR', '--addvectorreference', help="Add a reference for a vector", action='store_true')
 mutgroup.add_argument('-avR', '--addvulnreference', help="Add a reference for a vuln", action='store_true')
 mutgroup.add_argument('-pH', '--promotehost', help="Promote a scanned host to a secint host", type=int)
+mutgroup.add_argument('-uH', '--updatehost', help="Update a secint host", type=int)
+mutgroup.add_argument('-lN', '--listnetworks', help="List networks")
 
 
 #Modifiers
@@ -731,6 +733,36 @@ def promote_host():
 	
 
 
+#Crap, I need to abstract the hosts from ips and stuff. Maybe have nics attached to both hosts and networks. 
+def update_host():
+	getcon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+	getquery = "SELECT * FROM SecintHosts WHERE HostID=" + str(args.updatehost)
+	getcon.query(getquery)
+	getrow = getcon.use_result()
+	row = getrow.fetch_row()
+	hostid = row[0][0]
+	hostname = row[0][1]
+	hostnetwork = row[0][2]
+	hostdesc = row[0][3]
+	hostip = row[0][4]
+	hostos = row[0][5]
+	hostpwned = row[0][6]
+	hostroot = row[0][7]
+	hoststatus = row[0][8]
+	
+	if (args.root != None):
+		hostroot = args.root
+		
+	if (args.pwned != None):
+		hostpwned = args.pwned
+	
+	updatecon = _mysql.connect(dbhost, dbuser, dbpass, dbname)
+	updateq = "UPDATE SecintHosts SET HostRoot=" + str(hostroot) + ", HostPwned=" + str(hostpwned) + " WHERE HostID=" + hostid
+	updatecon.query(updateq)
+	
+	
+
+
 
 if (args.scanservices):
 
@@ -739,6 +771,10 @@ if (args.scanservices):
 elif (args.promotehost != None):
 	
 	promote_host()
+	
+elif (args.updatehost != None):
+	
+	update_host()
 	
 elif (args.scanhosts):
 
