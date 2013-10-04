@@ -1,7 +1,0 @@
-class SecintNetwork():
-    def __init__(self):
-        self.network_id = None
-        self.network_ip = None
-        self.network_prefix = None
-        self.network_desc = None
-
