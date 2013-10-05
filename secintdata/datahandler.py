@@ -39,6 +39,14 @@ class DataHandler():
                                     self.db_pass, self.db_name)
         return db_handle
 
+    def add_network(self, network_ip, network_prefix, network_desc):
+        add_network_handle = self.init_db_con()
+        add_network_query = ("INSERT INTO SecintNetworks (NetworkIP, "
+                                            "NetworkPrefix, NetworkDesc) VALUES (\"" +
+                                            network_ip + "\", \"" + network_prefix +
+                                            "\", \"" + network_desc + "\")")
+        add_network_handle.query(add_network_query)
+
     def update_host(self, hostid, hostname, hoststatus, hostpwned, hostroot):
         update_host_handle = self.init_db_con()
         update_query = "UPDATE SecintHosts SET "
@@ -66,7 +74,7 @@ class DataHandler():
         add_host_handle.query(add_host_query)
         add_nic_handle = ("INSERT INTO SecintNics (HostID, NetworkID, NicIP, NicPrefix) "
                                         "VALUES (LAST_INSERT_ID(), " + nic.network_id + ", \"" +
-                                        nic.network_ip + "\", \"" + nic.network_prefix + "\")")
+                                        nic.nic_ip + "\", \"" + nic.network_prefix + "\")")
         add_host_handle.query(add_nic_handle)
         get_nic_id = "SELECT LAST_INSERT_ID()"
         add_host_handle.query(get_nic_id)
@@ -178,7 +186,7 @@ class DataHandler():
                 network_db_handle = self.init_db_con()
                 get_networks_query = ("SELECT * FROM SecintNetworks "
                                                     "WHERE NetworkID="
-                                                    + tmp_nic.nic_id)
+                                                    + nic_row[0][2])
                 network_db_handle.query(get_networks_query)
                 networks_handle = network_db_handle.use_result()
                 network_row = networks_handle.fetch_row()
