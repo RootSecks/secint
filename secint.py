@@ -42,10 +42,13 @@ def main():
 
     mutgroup.add_argument(
         '-pH', '--promotehost', help="Promote host from"
-        "a scan to a secint host", metavar="HOSTID")  # PRMOTE SECINT HOST
+        "a scan to a secint host", metavar="HOSTID", type=int)  # PRMOTE SECINT HOST
     mutgroup.add_argument(
         '-uH', '--updatehost', help="Update the status effects of a host",
-        action='store_true')  # UPDATE SECINT HOST
+        action='store_true', metavar="HOSTID", type=int)  # UPDATE SECINT HOST
+    mutgroup.add_argument(
+        '-pN', '--promotenic', help="Promote a nic to "
+        "an existing host from a scanned host", metavar="HOSTID", type=int)  # PROMOTE A HOST TO A NIC ON AN EXISTING HOST
 
     mutgroup.add_argument(
         '-sN', '--scannmap', help="Perform nmap scan",
@@ -58,8 +61,20 @@ def main():
     parser.add_argument(
         '-nT', '--notable', help="Remove Table formatting"
         " and output as CSV", action='store_true')
+
     parser.add_argument(
         '-N', '--networkid', help="Network ID")
+    parser.add_argument(
+        '-sH', '--secinthost', help="Secint HostID")
+
+    parser.add_argument(
+        '-hR', '--root', help="root", type=int)
+    parser.add_argument(
+        '-hP', '--pwned', help="pwned", type=int)
+    parser.add_argument(
+        '-hS', '--status', help="Status", type=int)
+    parser.add_argument(
+        '-hN', '--hostname', help="Hostname")
 
     parser.add_argument(
         'filter', type=str, nargs='?', help='Filters output lists')
@@ -97,6 +112,11 @@ def main():
     elif (args.promotehost is not None):
         nmap_handler = secintscans.NmapScan(data_handler)
         nmap_handler.promote_host(args.promotehost, args.networkid)
+    elif (args.updatehost is not None):
+        data_handler.update_host(args.updatehost, args.hostname, args.status, args.pwned, args.root)
+    elif (args.promotenic is not None):
+        nmap_handler = secintscans.NmapScan(data_handler)
+        nmap_handler.promote_nic(args.promotehost, args.networkid, args.secinthost)
 
 if __name__ == "__main__":
     main()

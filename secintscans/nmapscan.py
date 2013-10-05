@@ -75,6 +75,51 @@ class NmapScan():
             service_list.append(tmp_service)
         self.data_handler.create_host_from_scan(host, nic, service_list)
 
+    def promote_nic(self, scanhostid, networkid, secinthostid):
+        host = self.data_handler.SecintHost()
+        nic = self.data_handler.SecintNic()
+        service_list = list()
+        host_handle = self.get_host(scanhostid)
+        host_row = host_handle.fetch_row()
+        host.host_name = host_row[0][4]
+        host.host_os = host_row[0][5]
+        if host_row[0][3] == "up":
+            host.host_status = 1
+        else:
+            host.host_status =0
+        host.host_pwned = 0
+        host.host_root = 0
+        network_list = self.data_handler.get_networks()
+        for tmp_net in network_list:
+            if (tmp_net.network_id == networkid):
+                network = tmp_net
+        nic.nic_ip = host_row[0][1]
+        nic.nic_prefix = tmp_net.network_prefix
+        nic.network_id = tmp_net.network_id
+        nic.network_ip = tmp_net.network_ip
+        nic.network_desc = tmp_net.network_desc
+        nic.network_prefix = tmp_net.network_prefix
+        host.nic_list.append(nic)
+        service_handle = self.get_services(host_row[0][0])
+        while True:
+            service_row = service_handle.fetch_row()
+            if not service_row:
+                break
+            tmp_service = self.data_handler.SecintService()
+            tmp_service.service_id = service_row[0][0]
+            if service_row[0][1] == "tcp":
+                tmp_service.service_proto = 6
+            elif service_row[0][1] == "udp":
+                tmp_service.service_proto = 17
+            else:
+                tmp_service.service_proto = 0
+            tmp_service.service_port = service_row[0][2]
+            tmp_service.service_name = service_row[0][3]
+            tmp_service.service_product = service_row[0][6]
+            tmp_service.service_version = service_row[0][7]
+            service_list.append(tmp_service)
+        self.data_handler.create_nic_from_scan(secinthostid, nic, service_list)
+
     def display_hosts(self, scanid, notable, notitle, filter):
         if filter is None:
             filter = ''

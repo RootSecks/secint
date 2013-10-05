@@ -39,6 +39,22 @@ class DataHandler():
                                     self.db_pass, self.db_name)
         return db_handle
 
+    def update_host(self, hostid, hostname, hoststatus, hostpwned, hostroot):
+        update_host_handle = self.init_db_con()
+        update_query = "UPDATE SecintHosts SET "
+        if hostname is not None:
+            update_host_name = update_query + "HostName=\"" + hostname + "\" WHERE HostID=" + str(hostid)
+            update_host_handle.query(update_host_name)
+        if hoststatus is not None:
+            update_status_name = update_query + "HostStatus=" + str(hoststatus) + " WHERE HostID=" + str(hostid)
+            update_host_handle.query(update_host_name)
+        if hostpwned is not None:
+            update_host_pwned = update_query + "HostPwned=" + str(hostpwned) + " WHERE HostID=" + str(hostid)
+            update_host_handle.query(update_host_pwned)
+        if hostroot is not None:
+            update_host_root = update_query + "HostRoot=" + str(hostroot) + " WHERE HostID=" + str(hostid)
+            update_host_handle.query(update_host_root)
+
     def create_host_from_scan(self, host, nic, service_list):
         add_host_handle = self.init_db_con()
         add_host_query = ("INSERT INTO SecintHosts (HostName, "
@@ -52,6 +68,26 @@ class DataHandler():
                                         "VALUES (LAST_INSERT_ID(), " + nic.network_id + ", \"" +
                                         nic.network_ip + "\", \"" + nic.network_prefix + "\")")
         add_host_handle.query(add_nic_handle)
+        get_nic_id = "SELECT LAST_INSERT_ID()"
+        add_host_handle.query(get_nic_id)
+        nic_handle = add_host_handle.use_result()
+        nic_row = nic_handle.fetch_row()
+        nic_id = nic_row[0][0]
+        for service in service_list:
+            service_db_handle = self.init_db_con()
+            add_service = ("INSERT INTO SecintServices (nicID, ServiceProto, ServicePort,"
+                                    " ServiceName, ServiceProduct, ServiceVersion) VALUES (" +
+                                    nic_id + ", " + str(service.service_proto) + ", " + str(service.service_port) +
+                                    ", \"" + service.service_name + "\", \"" + service.service_product +
+                                    "\", \"" + service.service_version + "\")")
+            service_db_handle.query(add_service)
+
+    def create_nic_from_scan(self, secinthostid, nic, service_list):
+        add_nic_handle = self.init_db_con()
+        add_nic_query = ("INSERT INTO SecintNics (HostID, NetworkID, NicIP, NicPrefix) "
+                                    "VALUES (" + secinthostid + ", " + nic.network_id + ", \"" +
+                                    nic.network_ip + "\", \"" + nic.network_prefix + "\")")
+        add_nic_handle.query(add_nic_query)
         get_nic_id = "SELECT LAST_INSERT_ID()"
         add_host_handle.query(get_nic_id)
         nic_handle = add_host_handle.use_result()
