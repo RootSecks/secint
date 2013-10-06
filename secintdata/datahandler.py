@@ -39,6 +39,22 @@ class DataHandler():
                                     self.db_pass, self.db_name)
         return db_handle
 
+    def create_service(self, nicid, serviceproto, serviceport):
+        add_service_handle = self.init_db_con()
+        add_service_query = ("INSERT INTO SecintServices (NicID, "
+                                            "ServiceProto, ServicePort) VALUES (" +
+                                            str(nicid) + ", " + str(serviceproto) + ", " +
+                                            str(serviceport) + ")")
+        add_service_handle.query(add_service_query)
+
+    def create_nic(self, host_id, network_id, nic_ip, nic_prefix):
+        add_nic_handle = self.init_db_con()
+        add_nic_query = ("INSERT INTO SecintNics (HostID, NetworkID, "
+                                    "NicIP, NicPrefix) VALUES (" + str(host_id) +
+                                    ", " + str(network_id) + ", \"" + nic_ip + "\", \"" +
+                                    nic_prefix + "\")")
+        add_nic_handle.query(add_nic_query)
+
     def add_network(self, network_ip, network_prefix, network_desc):
         add_network_handle = self.init_db_con()
         add_network_query = ("INSERT INTO SecintNetworks (NetworkIP, "

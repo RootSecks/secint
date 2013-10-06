@@ -37,6 +37,57 @@ class ListScans():
                             scan.scan_time, scan.scan_duration,
                             scan.scan_options)
 
+class DetailHost():
+    def __init__(self, host_list, hostid):
+        selected_host = host_list[0]
+        host_found = 0
+        for host in host_list:
+            print host.host_id
+            if str(int(host.host_id)) == str(int(hostid)):
+                selected_host = host
+                host_found = 1
+        if host_found == 1:
+            print "HostName: " + selected_host.host_name
+            print "HostOS: " + selected_host.host_os
+            if (selected_host.host_status == "1"):
+                selected_host.host_status = (ansicolors.GREEN +
+                                            "[+]" + ansicolors.ENDC)
+            else:
+                selected_host.host_status = (ansicolors.RED +
+                                            "[-]" + ansicolors.ENDC)
+            if (selected_host.host_root == "1"):
+                selected_host.host_root = (ansicolors.GREEN +
+                                        "[+]" + ansicolors.ENDC)
+            else:
+                selected_host.host_root = (ansicolors.RED +
+                                        "[-]" + ansicolors.ENDC)
+            if (selected_host.host_pwned == "1"):
+                selected_host.host_pwned = (ansicolors.GREEN +
+                                            "[+]" + ansicolors.ENDC)
+            else:
+                selected_host.host_pwned = (ansicolors.RED +
+                                            "[-]" + ansicolors.ENDC)
+            print "Host Status: " + selected_host.host_status
+            print "Host Pwned: " + selected_host.host_pwned
+            print "Host Root: " + selected_host.host_root
+            print "Host ID: " + selected_host.host_id
+            print "NICS: "
+            for nic in selected_host.nic_list:
+                print "Nic ID: " + nic.nic_id
+                print "Nic IP: " + nic.nic_ip + "/" + nic.nic_prefix
+                print "Services: "
+                for service in nic.service_list:
+                    if service.service_name is not None:
+                        print "Service Name: " + service.service_name
+                    print "ServiceID: " + service.service_id
+                    print "ServiceProto: " + service.service_proto
+                    print "ServicePort: " + service.service_port
+                    if service.service_product is not None:
+                        print "Service Product: " + service.service_product
+                    if service.service_version is not None:
+                        print "Service Version: " + service.service_version
+        else:
+            print "Unable to find host with hostid: " + str(hostid)
 
 class ListServices():
     """ListServices class
@@ -49,7 +100,7 @@ class ListServices():
             if filter is None:
                 filter = ''
             if not notable:
-                template = "{0:3}|{1:15}|{2:5}|{3:6}|{4:15}|{5:20}"
+                template = "{0:3}|{1:15}|{2:5}|{3:6}|{4:35}|{5:20}"
             if not notitle:
                 if notable:
                     print("ID\tIP\tHost\t"
@@ -62,6 +113,12 @@ class ListServices():
             for host in host_list:
                 for nic in host.nic_list:
                     for service in nic.service_list:
+                        if service.service_product is None:
+                            service.service_product = ' '
+                        if service.service_version is None:
+                            service.service_version = ' '
+                        if service.service_name is None:
+                            service.service_name = ' '
                         grep_text = (service.service_id + "\t" + nic.nic_ip +
                             "\t" + service.service_proto + "\t" +
                             service.service_port + "\t" +
@@ -127,18 +184,22 @@ class ListHosts():
             if filter is None:
                 filter = ''
             if not notable:
-                template = "{0:3}|{1:23}|{2:3}|{3:3}|{4:3}|{5:15}"
+                template = "{0:3}|{1:23}|{2:20}|{3:3}|{4:3}|{5:3}|{6:15}"
             if not notitle:
                 if notable:
-                    print ("HostID\tHostName\t"
+                    print ("HostID\tHostName\tNics\t"
                                 "HostStatus\tHostPwned\tHostRoot\tHostOS")
                 else:
-                    print template.format("ID", "Name", "STS",
+                    print template.format("ID", "Name", "NICS", "STS",
                                                         "PWN", "ROT", "OS")
             for host in host_list:
+                nics = ''
+                for nic in host.nic_list:
+                    nics = nics + nic.nic_ip + "/" + nic.nic_prefix + " "
                 greptext = (host.host_id + "\t\t" + host.host_name +
-                    "\t" + host.host_status + "\t\t" + host.host_pwned +
-                    "\t\t" + host.host_root + "\t\t" + host.host_os)
+                    "\t" + nics + "\t" + host.host_status + "\t\t" +
+                    host.host_pwned + "\t\t" + host.host_root +
+                    "\t\t" + host.host_os)
                 if filter in greptext:
                     if (host.host_status == "1"):
                         host.host_status = (ansicolors.GREEN +
@@ -160,9 +221,10 @@ class ListHosts():
                                                     "[-]" + ansicolors.ENDC)
                     if (notable):
                         print (host.host_id + "\t" + host.host_name + "\t" +
-                                host.host_status + "\t\t" + host.host_pwned +
-                                "\t\t" + host.host_root + host.host_os + "\t")
+                                nics + "\t" + host.host_status + "\t\t" +
+                                host.host_pwned + "\t\t" + host.host_root +
+                                host.host_os + "\t")
                     else:
                         print template.format(host.host_id, host.host_name,
-                            host.host_status, host.host_pwned,
+                            nics, host.host_status, host.host_pwned,
                             host.host_root, host.host_os)
