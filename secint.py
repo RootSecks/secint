@@ -98,6 +98,10 @@ def main():
         type=int)
 
     parser.add_argument(
+        '-nP', '--notpwned', help="Prevents pwn'd hosts from "
+        "showing up", action='store_true')
+
+    parser.add_argument(
         'filter', type=str, nargs='?', help='Filters output lists')
     args = parser.parse_args()
 
@@ -115,7 +119,8 @@ def main():
     if (args.listhosts):
         host_list = data_handler.get_hosts()
         secintdisplay.ListHosts(
-            host_list, args.notable, args.notitle, args.filter)
+            host_list, args.notable, args.notitle, 
+            args.filter, args.notpwned)
     elif (args.scannmap is not None):
         nmap_handler = secintscans.NmapScan(data_handler)
         nmap_handler.run_scan(args.scannmap)
@@ -126,7 +131,8 @@ def main():
     elif (args.listservices):
         host_list = data_handler.get_hosts()
         secintdisplay.ListServices(
-            host_list, args.notable, args.notitle, args.filter)
+            host_list, args.notable, args.notitle,
+            args.filter, args.notpwned)
     elif (args.listscans):
         scan_list = data_handler.get_scans()
         secintdisplay.ListScans(

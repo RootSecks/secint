@@ -95,7 +95,7 @@ class ListServices():
     Class that displays the services
 
     """
-    def __init__(self, host_list, notable, notitle, filter):
+    def __init__(self, host_list, notable, notitle, filter, notpwned):
         if host_list is not None:
             if filter is None:
                 filter = ''
@@ -111,32 +111,39 @@ class ListServices():
                                                         "Proto", "Port",
                                                         "Product", "Version")
             for host in host_list:
-                for nic in host.nic_list:
-                    for service in nic.service_list:
-                        if service.service_product is None:
-                            service.service_product = ' '
-                        if service.service_version is None:
-                            service.service_version = ' '
-                        if service.service_name is None:
-                            service.service_name = ' '
-                        grep_text = (service.service_id + "\t" + nic.nic_ip +
-                            "\t" + service.service_proto + "\t" +
-                            service.service_port + "\t" +
-                            service.service_product + "\t" +
-                            service.service_version)
-                        if filter in grep_text:
-                            if (notable):
-                                print(service.service_id + "\t" + nic.nic_ip +
-                                        "\t" + service.service_proto + "\t" +
-                                        service.service_port + "\t" +
-                                        service.service_product + "\t" +
+                display = 1
+                if (notpwned):
+                    if host.host_pwned == "1":
+                        display = 0
+                if display == 1:
+                    for nic in host.nic_list:
+                        for service in nic.service_list:
+                            if service.service_product is None:
+                                service.service_product = ' '
+                            if service.service_version is None:
+                                service.service_version = ' '
+                            if service.service_name is None:
+                                service.service_name = ' '
+                            if service.service_proto == "6":
+                                service.service_proto = "tcp"
+                            grep_text = (service.service_id + "\t" + nic.nic_ip +
+                                "\t" + service.service_proto + "\t" +
+                                service.service_port + "\t" +
+                                service.service_product + "\t" +
+                                service.service_version)
+                            if filter in grep_text:
+                                if (notable):
+                                    print(service.service_id + "\t" + nic.nic_ip +
+                                            "\t" + service.service_proto + "\t" +
+                                            service.service_port + "\t" +
+                                            service.service_product + "\t" +
+                                            service.service_version)
+                                else:
+                                    print template.format(service.service_id,
+                                        nic.nic_ip, service.service_proto,
+                                        service.service_port,
+                                        service.service_product,
                                         service.service_version)
-                            else:
-                                print template.format(service.service_id,
-                                    nic.nic_ip, service.service_proto,
-                                    service.service_port,
-                                    service.service_product,
-                                    service.service_version)
 
 
 class ListNetworks():
@@ -179,12 +186,12 @@ class ListHosts():
     Class that displays the hosts
 
     """
-    def __init__(self, host_list, notable, notitle, filter):
+    def __init__(self, host_list, notable, notitle, filter, notpwned):
         if host_list is not None:
             if filter is None:
                 filter = ''
             if not notable:
-                template = "{0:3}|{1:23}|{2:20}|{3:3}|{4:3}|{5:3}|{6:15}"
+                template = "{0:3}|{1:23}|{2:40}|{3:3}|{4:3}|{5:3}|{6:15}"
             if not notitle:
                 if notable:
                     print ("HostID\tHostName\tNics\t"
@@ -193,38 +200,43 @@ class ListHosts():
                     print template.format("ID", "Name", "NICS", "STS",
                                                         "PWN", "ROT", "OS")
             for host in host_list:
-                nics = ''
-                for nic in host.nic_list:
-                    nics = nics + nic.nic_ip + "/" + nic.nic_prefix + " "
-                greptext = (host.host_id + "\t\t" + host.host_name +
-                    "\t" + nics + "\t" + host.host_status + "\t\t" +
-                    host.host_pwned + "\t\t" + host.host_root +
-                    "\t\t" + host.host_os)
-                if filter in greptext:
-                    if (host.host_status == "1"):
-                        host.host_status = (ansicolors.GREEN +
+                display = 1
+                if (notpwned):
+                    if host.host_pwned == "1":
+                        display = 0
+                if display == 1:
+                    nics = ''
+                    for nic in host.nic_list:
+                        nics = nics + nic.nic_ip + "/" + nic.nic_prefix + " "
+                    greptext = (host.host_id + "\t\t" + host.host_name +
+                        "\t" + nics + "\t" + host.host_status + "\t\t" +
+                        host.host_pwned + "\t\t" + host.host_root +
+                        "\t\t" + host.host_os)
+                    if filter in greptext:
+                        if (host.host_status == "1"):
+                            host.host_status = (ansicolors.GREEN +
+                                                        "[+]" + ansicolors.ENDC)
+                        else:
+                            host.host_status = (ansicolors.RED +
+                                                        "[-]" + ansicolors.ENDC)
+                        if (host.host_root == "1"):
+                            host.host_root = (ansicolors.GREEN +
                                                     "[+]" + ansicolors.ENDC)
-                    else:
-                        host.host_status = (ansicolors.RED +
+                        else:
+                            host.host_root = (ansicolors.RED +
                                                     "[-]" + ansicolors.ENDC)
-                    if (host.host_root == "1"):
-                        host.host_root = (ansicolors.GREEN +
-                                                "[+]" + ansicolors.ENDC)
-                    else:
-                        host.host_root = (ansicolors.RED +
-                                                "[-]" + ansicolors.ENDC)
-                    if (host.host_pwned == "1"):
-                        host.host_pwned = (ansicolors.GREEN +
-                                                    "[+]" + ansicolors.ENDC)
-                    else:
-                        host.host_pwned = (ansicolors.RED +
-                                                    "[-]" + ansicolors.ENDC)
-                    if (notable):
-                        print (host.host_id + "\t" + host.host_name + "\t" +
-                                nics + "\t" + host.host_status + "\t\t" +
-                                host.host_pwned + "\t\t" + host.host_root +
-                                host.host_os + "\t")
-                    else:
-                        print template.format(host.host_id, host.host_name,
-                            nics, host.host_status, host.host_pwned,
-                            host.host_root, host.host_os)
+                        if (host.host_pwned == "1"):
+                            host.host_pwned = (ansicolors.GREEN +
+                                                        "[+]" + ansicolors.ENDC)
+                        else:
+                            host.host_pwned = (ansicolors.RED +
+                                                        "[-]" + ansicolors.ENDC)
+                        if (notable):
+                            print (host.host_id + "\t" + host.host_name + "\t" +
+                                    nics + "\t" + host.host_status + "\t\t" +
+                                    host.host_pwned + "\t\t" + host.host_root +
+                                    host.host_os + "\t")
+                        else:
+                            print template.format(host.host_id, host.host_name,
+                                nics, host.host_status, host.host_pwned,
+                                host.host_root, host.host_os)
