@@ -13,7 +13,6 @@ import secintscans
 
 APP_PATH = os.path.abspath(os.path.dirname(__file__))
 
-
 def main():
     parser = argparse.ArgumentParser(
         description="Security Intellegence Framework")
@@ -65,6 +64,9 @@ def main():
         '-cN', '--createnetwork', help="Create network", action='store_true')
 
     mutgroup.add_argument(
+        '-cV', '--createvuln', help="Create a vulnerability", action='store_true')
+
+    mutgroup.add_argument(
         '-sN', '--scannmap', help="Perform nmap scan",
         metavar="NMAPOPTIONS")  # NMAP SCAN
 
@@ -105,7 +107,7 @@ def main():
         'filter', type=str, nargs='?', help='Filters output lists')
     args = parser.parse_args()
 
-    data_handler = secintdata.DataHandler()
+    data_handler = secintdata.DataHandler(APP_PATH)
 
     def multi_line_input(helloString, stringDelim):
         print helloString

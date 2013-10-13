@@ -11,12 +11,13 @@ class DataHandler():
 
     """
     from secintobjects import *
-    def __init__(self):
+    def __init__(self, APP_PATH):
+        self.APP_PATH = APP_PATH
         self.db_name = None
         self.db_user = None
         self.db_pass = None
         self.db_host = None
-        conf_handle = open('secint.conf', 'r')
+        conf_handle = open(APP_PATH + '/secint.conf', 'r')
         for conf_line in conf_handle:
             conf_line = conf_line.strip('\n')
             conf_array = conf_line.split('=')
