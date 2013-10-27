@@ -9,6 +9,36 @@ class ansicolors:
     PINK = '\033[95m'
     ENDC = '\033[0m'
 
+class ListHashTypes():
+    def __init__(self, hashtype_list):
+        print("HashType\tID")
+        for hashtype in hashtype_list:
+            print(hashtype.hash_name + "\t" +
+                        hashtype.hash_id)
+
+class ListCreds():
+    def __init__(self, cred_list, notable, notitle, filter):
+        if cred_list is not None:
+            if filter is None:
+                filter = ''
+            if not notable:
+                template = "{0:3}|{1:4}|{2:4}|{3:5}"
+            if not notitle:
+                if notable:
+                    print("User\tPass\tIsHash\tHashType")
+                else:
+                    print template.format("User", "Pass", "IsHash", "HashType")
+            for cred in cred_list:
+                grep_text = (cred.cred_user + cred.cred_pass +
+                    cred.cred_ishash + cred.cred_hashtype)
+                if filter in grep_text:
+                    if (notable):
+                        print(cred.cred_user + "\t" +
+                            cred.cred_pass + "\t" + cred.cred_ishash + "\t" +
+                            cred.cred_hashtype)
+                    else:
+                        print template.format(cred.cred_user,
+                            cred.cred_pass, cred.cred_ishash, cred.cred_hashtype)
 
 class ListScans():
     def __init__(self, scan_list, notable, notitle, filter):
@@ -213,24 +243,27 @@ class ListHosts():
                         host.host_pwned + "\t\t" + host.host_root +
                         "\t\t" + host.host_os)
                     if filter in greptext:
-                        if (host.host_status == "1"):
-                            host.host_status = (ansicolors.GREEN +
+                        if host.host_status is not None:
+                            if (host.host_status == "1"):
+                                host.host_status = (ansicolors.GREEN +
+                                                            "[+]" + ansicolors.ENDC)
+                            else:
+                                host.host_status = (ansicolors.RED +
+                                                            "[-]" + ansicolors.ENDC)
+                        if host.host_root is not None:
+                            if (host.host_root == "1"):
+                                host.host_root = (ansicolors.GREEN +
                                                         "[+]" + ansicolors.ENDC)
-                        else:
-                            host.host_status = (ansicolors.RED +
+                            else:
+                                host.host_root = (ansicolors.RED +
                                                         "[-]" + ansicolors.ENDC)
-                        if (host.host_root == "1"):
-                            host.host_root = (ansicolors.GREEN +
-                                                    "[+]" + ansicolors.ENDC)
-                        else:
-                            host.host_root = (ansicolors.RED +
-                                                    "[-]" + ansicolors.ENDC)
-                        if (host.host_pwned == "1"):
-                            host.host_pwned = (ansicolors.GREEN +
-                                                        "[+]" + ansicolors.ENDC)
-                        else:
-                            host.host_pwned = (ansicolors.RED +
-                                                        "[-]" + ansicolors.ENDC)
+                        if host.host_pwned is not None:
+                            if (host.host_pwned == "1"):
+                                host.host_pwned = (ansicolors.GREEN +
+                                                            "[+]" + ansicolors.ENDC)
+                            else:
+                                host.host_pwned = (ansicolors.RED +
+                                                            "[-]" + ansicolors.ENDC)
                         if (notable):
                             print (host.host_id + "\t" + host.host_name + "\t" +
                                     nics + "\t" + host.host_status + "\t\t" +

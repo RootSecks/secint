@@ -9,6 +9,20 @@ class SecintScan():
         self.scan_duration = None
         self.scan_options = None
 
+class HashType():
+    def __init__(self):
+        self.hash_id = None
+        self.hash_name = None
+
+class SecintCred():
+    def __init__(self):
+        self.cred_id = None
+        self.cred_user = None
+        self.cred_pass = None
+        self.cred_ishash = None
+        self.cred_hashtype = None
+        self.cred_sourcetype = None
+        self.cred_sourceid = None
 
 class SecintHost():
     """SecintHost Class

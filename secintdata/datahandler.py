@@ -40,6 +40,63 @@ class DataHandler():
                                     self.db_pass, self.db_name)
         return db_handle
 
+    def get_hash_types(self):
+        get_hashtypes_handle = self.init_db_con()
+        get_hashtypes_query = ("SELECT * FROM SecintHashTypes")
+        get_hashtypes_handle.query(get_hashtypes_query)
+        hashtypes_handle = get_hashtypes_handle.use_result()
+        hashtypes_list = list()
+        while True:
+            hashtype_row = hashtypes_handle.fetch_row()
+            if not hashtype_row:
+                break
+            hashtype = HashType()
+            hashtype.hash_id = hashtype_row[0][0]
+            hashtype.hash_name = hashtype_row[0][1]
+            hashtypes_list.append(hashtype)
+        return hashtypes_list
+
+    def get_creds(self):
+        get_creds_handle = self.init_db_con()
+        get_creds_query = ("SELECT * FROM SecintCreds")
+        get_creds_handle.query(get_creds_query)
+        creds_handle = get_creds_handle.use_result()
+        creds_list = list()
+        while True:
+            cred_row = creds_handle.fetch_row()
+            if not cred_row:
+                break
+            secintcred = SecintCred()
+            secintcred.cred_id = cred_row[0][0]
+            secintcred.cred_user = cred_row[0][1]
+            secintcred.cred_pass = cred_row[0][2]
+            secintcred.cred_ishash = cred_row[0][3]
+            secintcred.cred_hashtype = cred_row[0][4]
+            secintcred.cred_sourcetype = cred_row[0][5]
+            secintcred.cred_sourceid = cred_row[0][6]
+            creds_list.append(secintcred)
+        return creds_list
+
+    def add_credential(self, username, password, is_hash, hash_id, source_type, source_id):
+        '''Host Types: 1 = Host
+        2 = Service
+        0 = Null'''
+        add_cred_handle = self.init_db_con()
+        add_cred_query = ("INSERT INTO SecintCreds (CredUser, CredPass, "
+                                        "IsHash, HashType, SourceType, SourceID) VALUES "
+                                        "(\"" + username + "\", \"" + password + "\", " +
+                                        str(is_hash) + ", " + str(hash_id) + ", " + str(source_type) +
+                                        ", " + str(source_id) + ")")
+        add_cred_handle.query(add_cred_query)
+
+    def create_host(self, hostname, hostos, hoststatus, hostpwned, hostroot):
+        add_host_handle = self.init_db_con()
+        add_host_query = ("INSERT INTO SecintHosts (HostName, HostOS, HostStatus, "
+                                        "HostPwned, HostRoot) VALUES (\"" + hostname + "\", \"" + 
+                                        hostos + "\", " + hoststatus + ", " + hostpwned + ", " +
+                                        hostroot + ")")
+        add_host_handle.query(add_host_query)
+
     def create_service(self, nicid, serviceproto, serviceport):
         add_service_handle = self.init_db_con()
         add_service_query = ("INSERT INTO SecintServices (NicID, "

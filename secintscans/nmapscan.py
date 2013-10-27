@@ -149,7 +149,7 @@ class NmapScan():
         if filter is None:
             filter = ''
             host_handle = self.get_hosts(scanid)
-            template = "{0:15}|{1:25}|{2:8}|{3:8}|{4:8}|{5:15}|{6:45}|{7:35}"
+            template = "{0:15}|{1:10}|{2:8}|{3:8}|{4:8}|{5:15}|{6:45}|{7:35}"
             if not notitle:
                 if not notable:
                     print template.format("IP", "HostName", "SvcID", "Proto",

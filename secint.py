@@ -31,7 +31,7 @@ def main():
     
     mutgroup.add_argument(
         '-hD', '--hostdetails', help="Show detailed "
-        "host info", type=int)
+        "host info", type=int) #SHOW DETAILED HOST INFORMATION
 
     mutgroup.add_argument(
         '-lSc', '--listscans', help="List scans",
@@ -44,6 +44,9 @@ def main():
         metavar="SCANID", type=int)  # LIST SERVICES FROM A SCAN
 
     mutgroup.add_argument(
+        '-lC', '--listcreds', help="List creds", action='store_true')
+
+    mutgroup.add_argument(
         '-pH', '--promotehost', help="Promote host from"
         "a scan to a secint host", metavar="HOSTID", type=int)  # PRMOTE SECINT HOST
     mutgroup.add_argument(
@@ -54,11 +57,22 @@ def main():
         "an existing host from a scanned host", metavar="HOSTID", type=int)  # PROMOTE A HOST TO A NIC ON AN EXISTING HOST
 
     mutgroup.add_argument(
+        '-cH', '--createhost', help="Create a host",
+        action='store_true')
+    mutgroup.add_argument(
         '-cNi', '--createnic', help="Create a nic", 
         metavar="HOSTID", type=int)
     mutgroup.add_argument(
         '-cS', '--createservice', help="Create a service",
         metavar="NICID", type=int)
+
+    mutgroup.add_argument(
+        '-aC', '--addcredential', help="Add credentials",
+        action='store_true')
+
+    mutgroup.add_argument(
+        '-lHt', '--listhashetypes', help="List hash types",
+        action='store_true')
 
     mutgroup.add_argument(
         '-cN', '--createnetwork', help="Create network", action='store_true')
@@ -91,6 +105,24 @@ def main():
         '-hS', '--status', help="Status", type=int)
     parser.add_argument(
         '-hN', '--hostname', help="Hostname")
+    parser.add_argument(
+        '-hOS', '--hostos', help="HostOS")
+
+    parser.add_argument(
+        '-U', '--username', help="Username")
+    parser.add_argument(
+        '-P', '--password', help="Password")
+    parser.add_argument(
+        '-iH', '--ishash', help="password is hashed",
+        type=int)
+
+    parser.add_argument(
+        '-Hi', '--hostid', help="Host ID", type=int)
+    parser.add_argument(
+        '-Si', '--serviceid', help="Service ID", type=int )
+
+    parser.add_argument(
+        '-S', '--source', help="Source of a password or hash")
 
     parser.add_argument(
         '-sP', '--serviceproto', help="Service Proto",
@@ -183,6 +215,65 @@ def main():
         else:
             service_port = raw_input("Enter the port number: ")
         data_handler.create_service(args.createservice, service_proto, service_port)
+    elif (args.createhost):
+        if (args.hostname is not None):
+            hostname = args.hostname
+        else:
+            hostname = raw_input("Enter a hostname: ")
+        if (args.hostos is not None):
+            hostos = args.hostos
+        else:
+            hostos = raw_input("Enter the OS: ")
+        if (args.status is not None):
+            hoststatus = args.status
+        else:
+            hoststatus = raw_input("Host status (1/0): ")
+        if (args.pwned is not None):
+            hostpwned = args.pwned
+        else:
+            hostpwned = raw_input("Host pwned (1/0): ")
+        if (args.root is not None):
+            hostroot = args.root
+        else:
+            hostroot = raw_input("Host root (1/0): ")
+        data_handler.create_host(hostname, hostos, hoststatus, hostpwned, hostroot)
+    elif(args.addcredential):
+        if (args.username is not None or args.password is not None):
+            if (args.username is not None):
+                username = args.username
+            else:
+                username = ""
+            if (args.password is not None):
+                password = args.password
+            else:
+                password = ""
+        if (args.ishash is not None):
+            is_hash = 1
+            hash_id = args.ishash
+        else:
+            is_hash = 0
+            hash_id = 0
+        ready_bool = True
+        if (args.hostid is not None and args.serviceid is not None):
+            print("Please select either hostid, serviceid, or nothing")
+            ready_bool = False
+        elif (args.hostid is not None):
+            source_type = 1
+            source_id = args.hostid
+        elif (args.serviceid is not None):
+            source_type = 2
+            source_id = args.serviceid
+        elif (args.serviceid is None and args.hostid is None):
+            source_type = 0
+            source_id = 0
+        if (ready_bool is True):
+            data_handler.add_credential(username, password, is_hash, hash_id, source_type, source_id)
+    elif(args.listhashetypes):
+        hashtype_list = data_handler.get_hash_types()
+        secintdisplay.ListHashTypes(hashtype_list)
+    elif(args.listcreds):
+        cred_list = data_handler.get_creds()
+        secintdisplay.ListCreds(cred_list, args.notable, args.notitle, args.filter)
 
 if __name__ == "__main__":
     main()
