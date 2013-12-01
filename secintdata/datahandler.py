@@ -9,8 +9,7 @@ class DataHandler():
 
     Moves data from secint to the secint database and back again
 
-    """
-    from secintobjects import *
+    """    
     def __init__(self, APP_PATH):
         self.APP_PATH = APP_PATH
         self.db_name = None
@@ -56,6 +55,15 @@ class DataHandler():
             hashtypes_list.append(hashtype)
         return hashtypes_list
 
+    def get_hash_type(self, hash_id):
+        get_hashtype_handle = self.init_db_con()
+        get_hashtype_query = ("SELECT * FROM SecintHashTypes WHERE "
+                                            "HashID=" + hash_id)
+        get_hashtype_handle.query(get_hashtype_query)
+        hashtype_handle = get_hashtype_handle.use_result()
+        hashtype_row = hashtype_handle.fetch_row()
+        return hashtype_row[0][1]
+
     def get_creds(self):
         get_creds_handle = self.init_db_con()
         get_creds_query = ("SELECT * FROM SecintCreds")
@@ -66,12 +74,17 @@ class DataHandler():
             cred_row = creds_handle.fetch_row()
             if not cred_row:
                 break
+            if (cred_row[0][3] == "1"):
+                hash_name = self.get_hash_type(cred_row[0][4])
+            else:
+                hash_name = ""
             secintcred = SecintCred()
             secintcred.cred_id = cred_row[0][0]
             secintcred.cred_user = cred_row[0][1]
             secintcred.cred_pass = cred_row[0][2]
             secintcred.cred_ishash = cred_row[0][3]
             secintcred.cred_hashtype = cred_row[0][4]
+            secintcred.cred_hashname = hash_name
             secintcred.cred_sourcetype = cred_row[0][5]
             secintcred.cred_sourceid = cred_row[0][6]
             creds_list.append(secintcred)
@@ -88,6 +101,44 @@ class DataHandler():
                                         str(is_hash) + ", " + str(hash_id) + ", " + str(source_type) +
                                         ", " + str(source_id) + ")")
         add_cred_handle.query(add_cred_query)
+
+
+    def insert_nmap_scan(self, nmap_scan):
+        add_scan_handle = self.init_db_con()
+        add_scan_query = ("INSERT INTO SecintScans (ScanTime, ScanDuration, " +
+                                        "ScanOptions, ScanType) VALUES (NOW(), \"" +
+                                        nmap_scan.scan_duration + "\", \"" + nmap_scan.scan_options +
+                                        "\", 1)")
+        add_scan_handle.query(add_scan_query)
+        get_scan_id = "SELECT LAST_INSERT_ID()"
+        add_scan_handle.query(get_scan_id)
+        scan_handle = add_scan_handle.use_result()
+        scan_row = scan_handle.fetch_row()
+        scan_id = scan_row[0][0]
+        
+        for host in nmap_scan.host_list:
+            add_host_handle = self.init_db_con()
+            add_host_query = ("INSERT INTO SecintScan_NmapHosts (HostName, HostIP, ParentScan"+
+                                        ", HostStatus, HostOS) VALUES (\"" + host.host_name + "\", \"" +
+                                        host.host_ip + "\", " + scan_id + ", \"" + host.host_status +
+                                        "\", \"" + host.host_os_name + "\")")
+            add_host_handle.query(add_host_query)
+            get_host_id = "SELECT LAST_INSERT_ID()"
+            add_host_handle.query(get_host_id)
+            host_handle = add_host_handle.use_result()
+            host_row = host_handle.fetch_row()
+            host_id = host_row[0][0]
+            
+            for service in host.service_list:
+                add_service_handle = self.init_db_con()
+                add_service_query = ("INSERT INTO SecintScan_NmapServices (ServiceProto, ServicePort, " +
+                                                "ServiceName, ParentHost, ServiceProduct, ServiceVersion) VALUES (" +
+                                                "\"" + service.service_proto + "\", \"" + service.service_port + "\", \"" +
+                                                service.service_name + "\", " + host_id + ", \"" + service.service_product +
+                                                "\", \"" + service.service_version + "\")")
+                add_service_handle.query(add_service_query)
+        
+        
 
     def create_host(self, hostname, hostos, hoststatus, hostpwned, hostroot):
         add_host_handle = self.init_db_con()

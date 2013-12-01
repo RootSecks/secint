@@ -6,14 +6,131 @@ import subprocess
 import os
 
 
+
+class NmapSession:
+    def __init__(self):
+        self.scan_time = None
+        self.scan_duration = None
+        self.scan_options = None
+        self.scan_type = "nmap"
+        self.host_list = None
+
+class NmapHost:
+    def __init__(self):
+        self.host_ip = None
+        self.host_name = None
+        self.host_os_name = None
+        self.host_status = None
+        self.service_list = None
+
+class NmapService:
+    def __init__(self):
+        self.service_port = None
+        self.service_proto = None
+        self.service_name = None
+        self.service_product = None
+        self.service_version = None
+
 class NmapScan():
     def __init__(self, data_handler):
         self.data_handler = data_handler
 
-    def run_scan(self, options):
-        pipe = subprocess.Popen(["./tools/nmapdb.pl", options],
+    def run_scan3(self, options):
+        pipe = subprocess.Popen(["../tools/nmapdb.pl", options],
                                                 stdout=subprocess.PIPE)
         result = pipe.stdout.read()
+
+    def run_scan(self, scan_options, scan_hosts):
+        nmap_handle = nmap.PortScanner()
+        if scan_options is None:
+            scan_options = "-sV"
+        nmap_dict = nmap_handle.scan(hosts=scan_hosts, arguments=scan_options)  
+
+        nmap_scan = NmapSession()
+        nmap_scan.scan_time = nmap_dict['nmap']['scanstats']['timestr']
+        nmap_scan.scan_duration = nmap_dict['nmap']['scanstats']['elapsed']
+        nmap_scan.scan_options = scan_options + " " +scan_hosts
+        
+        nmap_scan.host_list = list()
+    
+        for host in nmap_handle.all_hosts():
+            host_status = nmap_handle[host]['status']['state']
+            host_addr = host
+            host_name = nmap_handle[host]['hostname']
+            
+            if 'osmatch' in nmap_handle[host]:
+                host_os_name = nmap_handle[host]['osmatch'][0]['name']
+            else:
+                host_os_name = "Unknown"
+            if host_name is None:
+                host_name = ""
+            if host_os_name is None:
+                host_os_name = ""
+
+
+            tmp_host = NmapHost()
+            tmp_host.host_status = host_status
+            tmp_host.host_ip = host_addr
+            tmp_host.host_name = host_name
+            tmp_host.host_os_name = host_os_name
+            tmp_host.service_list = list()
+
+            #INSERT INTO DATABASE
+            #print "_________"
+            #print "Host: " + host
+            #print "Host Name: " + host_name
+            #print "Host OS:" + host_os_name
+            #print "---------"
+
+            if 'tcp' in nmap_handle[host]:
+                for port in nmap_handle[host]['tcp']:
+                    service_proto = 'tcp'
+                    service_port = port
+                    service_name = nmap_handle[host]['tcp'][port]['name']
+                    service_product = nmap_handle[host]['tcp'][port]['product']
+                    service_version = nmap_handle[host]['tcp'][port]['version']
+
+                    ##print "Service: " + str(port)
+                    #print "Service Proto: " + service_proto
+                    #print "Service Port: " + str(service_port)
+                    #print "Service Name: " + service_name
+                    #print "Service Product: " + service_product
+                    #print "Service Version: " + service_version
+
+                    tmp_service = NmapService()
+                    tmp_service.service_port = str(service_port)
+                    tmp_service.service_proto = service_proto
+                    tmp_service.service_name = service_name
+                    tmp_service.service_product = service_product
+                    tmp_service.service_version = service_version
+                    tmp_host.service_list.append(tmp_service)
+
+            if 'udp' in nmap_handle[host]:
+                for port in nmap_handle[host]['udp']:
+                    service_proto = 'udp'
+                    service_port = port
+                    service_name = nmap_handle[host]['udp'][port]['name']
+                    service_product = nmap_handle[host]['udp'][port]['product']
+                    service_version = nmap_handle[host]['udp'][port]['version']
+
+                    #print "Service: " + str(port)
+                    #print "Service Proto: " + service_proto
+                    #print "Service Port: " + str(service_port)
+                    #print "Service Name: " + service_name
+                    #print "Service Product: " + service_product
+                    #print "Service Version: " + service_version
+
+                    tmp_service = NmapService()
+                    tmp_service.service_port = str(service_port)
+                    tmp_service.service_proto = service_proto
+                    tmp_service.service_name = service_name
+                    tmp_service.service_product = service_product
+                    tmp_service.service_version = service_version
+                    tmp_host.service_list.append(tmp_service)
+
+            nmap_scan.host_list.append(tmp_host)
+        
+        self.data_handler.insert_nmap_scan(nmap_scan)
 
     def get_hosts(self, scanid):
         host_handle = self.data_handler.get_data("SELECT * FROM"

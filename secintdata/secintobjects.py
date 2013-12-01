@@ -21,6 +21,7 @@ class SecintCred():
         self.cred_pass = None
         self.cred_ishash = None
         self.cred_hashtype = None
+        self.cred_hashname = None
         self.cred_sourcetype = None
         self.cred_sourceid = None
 

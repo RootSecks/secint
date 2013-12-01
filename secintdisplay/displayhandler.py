@@ -30,15 +30,15 @@ class ListCreds():
                     print template.format("User", "Pass", "IsHash", "HashType")
             for cred in cred_list:
                 grep_text = (cred.cred_user + cred.cred_pass +
-                    cred.cred_ishash + cred.cred_hashtype)
+                    cred.cred_ishash + cred.cred_hashname)
                 if filter in grep_text:
                     if (notable):
                         print(cred.cred_user + "\t" +
                             cred.cred_pass + "\t" + cred.cred_ishash + "\t" +
-                            cred.cred_hashtype)
+                            cred.cred_hashname)
                     else:
                         print template.format(cred.cred_user,
-                            cred.cred_pass, cred.cred_ishash, cred.cred_hashtype)
+                            cred.cred_pass, cred.cred_ishash, cred.cred_hashname)
 
 class ListScans():
     def __init__(self, scan_list, notable, notitle, filter):

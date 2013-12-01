@@ -16,7 +16,7 @@ my $dbname = " ";
 my $dbuser = " ";
 my $dbpass = " ";
 
-open SECINTCONF, "secint.conf" or die $!;
+open SECINTCONF, "../secint.conf" or die $!;
 
 my @confline;
 

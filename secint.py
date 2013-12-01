@@ -136,10 +136,15 @@ def main():
         "showing up", action='store_true')
 
     parser.add_argument(
+	'-nO', '--nmapoptions', help="Additional flags to use"
+	"When running nmap scans")
+
+    parser.add_argument(
         'filter', type=str, nargs='?', help='Filters output lists')
     args = parser.parse_args()
 
     data_handler = secintdata.DataHandler(APP_PATH)
+
 
     def multi_line_input(helloString, stringDelim):
         print helloString
@@ -157,7 +162,9 @@ def main():
             args.filter, args.notpwned)
     elif (args.scannmap is not None):
         nmap_handler = secintscans.NmapScan(data_handler)
-        nmap_handler.run_scan(args.scannmap)
+        print args.scannmap
+	print args.nmapoptions
+	nmap_handler.run_scan(args.nmapoptions, args.scannmap)
     elif (args.listnetworks):
         network_list = data_handler.get_networks()
         secintdisplay.ListNetworks(
