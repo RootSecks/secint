@@ -36,11 +36,6 @@ class NmapScan():
     def __init__(self, data_handler):
         self.data_handler = data_handler
 
-    def run_scan3(self, options):
-        pipe = subprocess.Popen(["../tools/nmapdb.pl", options],
-                                                stdout=subprocess.PIPE)
-        result = pipe.stdout.read()
-
     def run_scan(self, scan_options, scan_hosts, scan_desc):
         nmap_handle = nmap.PortScanner()
         if scan_options is None:
