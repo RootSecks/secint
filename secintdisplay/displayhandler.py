@@ -46,26 +46,26 @@ class ListScans():
             if filter is None:
                 filter = ''
             if not notable:
-                template = "{0:3}|{1:4}|{2:20}|{3:10}|{4:20}"
+                template = "{0:3}|{1:4}|{2:20}|{3:10}|{4:40}|{5:40}"
             if not notitle:
                 if notable:
-                    print("ID\tType\tTime\tDuration\tOptions")
+                    print("ID\tType\tTime\tDuration\tOptions\tDesc")
                 else:
                     print template.format("ID", "Type", "Time",
-                        "Duration", "Options")
+                        "Duration", "Options", "Desc")
             for scan in scan_list:
                 grep_text = (scan.scan_id + "\t" + scan.scan_type + "\t" +
                     scan.scan_time + "\t" + scan.scan_duration +
-                    "\t" + scan.scan_options)
+                    "\t" + scan.scan_options + "\t" + scan.scan_desc)
                 if filter in grep_text:
                     if (notable):
                         print(scan.scan_id + "\t" + scan.scan_type + "\t" +
                             scan.scan_time + "\t" + scan.scan_duration +
-                            "\t" + scan.scan_options)
+                            "\t" + scan.scan_options + "\t" + scan.scan_desc)
                     else:
                         print template.format(scan.scan_id, scan.scan_type,
                             scan.scan_time, scan.scan_duration,
-                            scan.scan_options)
+                            scan.scan_options, scan.scan_desc)
 
 class DetailHost():
     def __init__(self, host_list, hostid):

@@ -8,6 +8,7 @@ class SecintScan():
         self.scan_time = None
         self.scan_duration = None
         self.scan_options = None
+        self.scan_desc = None
 
 class HashType():
     def __init__(self):

@@ -138,6 +138,8 @@ def main():
     parser.add_argument(
 	'-nO', '--nmapoptions', help="Additional flags to use"
 	"When running nmap scans")
+    parser.add_argument(
+    '-sD', '--scandescription', help="Add a description to a scan")
 
     parser.add_argument(
         'filter', type=str, nargs='?', help='Filters output lists')
@@ -162,9 +164,7 @@ def main():
             args.filter, args.notpwned)
     elif (args.scannmap is not None):
         nmap_handler = secintscans.NmapScan(data_handler)
-        print args.scannmap
-	print args.nmapoptions
-	nmap_handler.run_scan(args.nmapoptions, args.scannmap)
+        nmap_handler.run_scan(args.nmapoptions, args.scannmap, args.scandescription)
     elif (args.listnetworks):
         network_list = data_handler.get_networks()
         secintdisplay.ListNetworks(

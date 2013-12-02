@@ -106,9 +106,9 @@ class DataHandler():
     def insert_nmap_scan(self, nmap_scan):
         add_scan_handle = self.init_db_con()
         add_scan_query = ("INSERT INTO SecintScans (ScanTime, ScanDuration, " +
-                                        "ScanOptions, ScanType) VALUES (NOW(), \"" +
+                                        "ScanOptions, ScanType, ScanDesc) VALUES (NOW(), \"" +
                                         nmap_scan.scan_duration + "\", \"" + nmap_scan.scan_options +
-                                        "\", 1)")
+                                        "\", 1,\"" + nmap_scan.scan_desc + "\")")
         add_scan_handle.query(add_scan_query)
         get_scan_id = "SELECT LAST_INSERT_ID()"
         add_scan_handle.query(get_scan_id)
@@ -256,6 +256,7 @@ class DataHandler():
             tmp_scan.scan_time = scan_row[0][2]
             tmp_scan.scan_duration = scan_row[0][3]
             tmp_scan.scan_options = scan_row[0][4]
+            tmp_scan.scan_desc = scan_row[0][5]
             scan_list.append(tmp_scan)
         return scan_list
 

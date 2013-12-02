@@ -13,6 +13,7 @@ class NmapSession:
         self.scan_duration = None
         self.scan_options = None
         self.scan_type = "nmap"
+        self.scan_desc = None
         self.host_list = None
 
 class NmapHost:
@@ -40,7 +41,7 @@ class NmapScan():
                                                 stdout=subprocess.PIPE)
         result = pipe.stdout.read()
 
-    def run_scan(self, scan_options, scan_hosts):
+    def run_scan(self, scan_options, scan_hosts, scan_desc):
         nmap_handle = nmap.PortScanner()
         if scan_options is None:
             scan_options = "-sV"
@@ -50,6 +51,11 @@ class NmapScan():
         nmap_scan.scan_time = nmap_dict['nmap']['scanstats']['timestr']
         nmap_scan.scan_duration = nmap_dict['nmap']['scanstats']['elapsed']
         nmap_scan.scan_options = scan_options + " " +scan_hosts
+        
+        if scan_desc is not None:
+            nmap_scan.scan_desc = scan_desc
+        else:
+            nmap_scan.scan_desc = " "
         
         nmap_scan.host_list = list()
     
@@ -241,7 +247,7 @@ class NmapScan():
         if filter is None:
             filter = ''
         host_handle = self.get_hosts(scanid)
-        template = "{0:3}|{1:15}|{2:6}|{3:10}|{4:30}"
+        template = "{0:3}|{1:15}|{2:6}|{3:40}|{4:30}"
         if not notitle:
             if not notable:
                 print template.format("ID", "IP", "Status", "Name", "OS")
@@ -266,7 +272,7 @@ class NmapScan():
         if filter is None:
             filter = ''
             host_handle = self.get_hosts(scanid)
-            template = "{0:15}|{1:10}|{2:8}|{3:8}|{4:8}|{5:15}|{6:45}|{7:35}"
+            template = "{0:15}|{1:40}|{2:8}|{3:8}|{4:8}|{5:15}|{6:45}|{7:35}"
             if not notitle:
                 if not notable:
                     print template.format("IP", "HostName", "SvcID", "Proto",
